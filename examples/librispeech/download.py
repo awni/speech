@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import argparse
 import os
@@ -5,7 +6,7 @@ import urllib.request
 import tarfile
 
 EXT = ".tar.gz"
-FILES = ["raw-metadata"] #, "train-clean-100"]
+FILES = ["raw-metadata", "train-clean-100", "dev-clean"]
 BASE_URL = "http://www.openslr.org/resources/12/"
 
 def download_and_extract(in_file, out_dir):
@@ -29,4 +30,7 @@ if __name__ == "__main__":
     parser.add_argument("output_directory",
         help="The dataset is saved in <output_directory>/LibriSpeech.")
     args = parser.parse_args()
-    download_and_extract(FILES[0], args.output_directory)
+
+    for f in FILES:
+        print("Downloading {}".format(f))
+        download_and_extract(f, args.output_directory)
