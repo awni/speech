@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 
 import subprocess
@@ -7,7 +9,7 @@ AVCONV = "avconv"
 
 def check_install(*args):
     try:
-        out = subprocess.check_output(args,
+        subprocess.check_output(args,
                     stderr=subprocess.STDOUT)
         return True
     except OSError as e:
@@ -25,11 +27,19 @@ def check_ffmpeg():
     """
     return check_install(FFMPEG, "-version")
 
-def flac_to_wave(flac_file, wave_file, use_avconv=True):
+
+USE_AVCONV = check_avconv()
+USE_FFMPEG = check_ffmpeg()
+if not (USE_AVCONV or USE_FFMPEG):
+    raise OSError(("Must have avconv or ffmpeg "
+                   "installed to use conversion functions."))
+USE_AVCONV = not USE_FFMPEG
+
+def flac_to_wave(flac_file, wave_file, use_avconv=USE_AVCONV):
     prog = AVCONV if use_avconv else FFMPEG
-    args = [prog, "-i", input_file, output_file]
-    subprocess.check_output(args)
+    args = [prog, "-y", "-i", flac_file, wave_file]
+    subprocess.check_output(args, stderr=subprocess.STDOUT)
 
 if __name__ == "__main__":
-    check_avconv()
-    check_ffmpeg()
+    print("Use avconv", USE_AVCONV)
+

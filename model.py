@@ -1,5 +1,6 @@
-from __future__ import print_function
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 
 import math
 import torch
@@ -8,7 +9,7 @@ import torch.autograd as autograd
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, ouput_dim):
+    def __init__(self, freq_dim, output_dim):
         super(Model, self).__init__()
         self.freq_dim = freq_dim
         self.output_dim = output_dim
