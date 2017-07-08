@@ -9,10 +9,16 @@ import torch.autograd as autograd
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, output_dim):
+    def __init__(self, freq_dim, output_dim, mean, std):
         super(Model, self).__init__()
         self.freq_dim = freq_dim
         self.output_dim = output_dim
+
+        ## For encoding
+        self.mean = nn.Parameter(data=torch.Tensor(mean),
+                                 requires_grad=False)
+        self.std = nn.Parameter(data=torch.Tensor(std),
+                                requires_grad=False)
 
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, (32, 2), stride=(2, 2), padding=0),
@@ -21,19 +27,18 @@ class Model(nn.Module):
             nn.ReLU()
         )
 
-        self.rnn = nn.GRU(input_size=self.conv_out_dim,
+        self.rnn = nn.GRU(input_size=self.conv_out_dim(),
                           hidden_size=128, num_layers=1,
                           batch_first=True, dropout=False,
                           bidirectional=False)
 
-        self.fc = nn.Sequential(
-                nn.Linear(128, 128),
-                nn.ReLU(),
-                nn.Linear(128, self.output_dim),
-                nn.Softmax()
-        )
+        # For decoding
+        self.embedding = nn.Embedding(self.output_dim, 32)
+        self.dec_rnn = nn.GRUCell(32, 128)
+        self.attend = Attention()
+        self.fc = nn.Linear(128, self.output_dim)
 
-    @property
+
     def conv_out_dim(self):
         dim = self.freq_dim
         for c in self.conv.children():
@@ -46,7 +51,14 @@ class Model(nn.Module):
                 channels = c.out_channels
         return dim * channels
 
-    def forward(self, x):
+    def opt_params(self):
+        return filter(lambda p : p.requires_grad, self.parameters())
+
+    def forward(self, x, y=None):
+        # TODO, awni, remove this when broadcasting is in stable pytorch
+        x = broadcast_sub(x, self.mean)
+        x = broadcast_div(x, self.std)
+
         x = x.unsqueeze(1)
         x = self.conv(x)
 
@@ -60,22 +72,79 @@ class Model(nn.Module):
         x = x.view((b, t, f * c))
         x, h = self.rnn(x)
 
-        x = x.contiguous().view((b * t, -1))
-        x = self.fc(x)
-        x = x.view((b, t, -1))
+        x = x.contiguous().view((b, t, -1))
 
-        return x
+        if y is not None:
+            return self.decode_train(x, y)
 
-if __name__ == "__main__":
+        return self.decode_test(x)
 
-    time_steps = 200
-    freq_dim = 90
-    output_dim = 10
-    batch_size = 4
+    def decode_train(self, x, y):
+        # x should be shape (batch, time, dimension)
+        # y should be shape (batch, label sequence length)
+        batch_size, seq_len = y.size()
+        inputs = self.embedding(y[:, :-1])
+        hx = autograd.Variable(torch.zeros(batch_size, 128))
+        out = []
+        for t in range(seq_len - 1):
+            hx = self.dec_rnn(inputs[:, t, :], hx)
+            hx = self.attend(x, hx)
+            out.append(hx)
+        out = torch.stack(out, dim=1)
+        b, t, d = out.size()
+        out = out.view((b * t, d))
+        out = self.fc(out)
+        out = out.view((b, t, self.output_dim))
+        return out
 
-    x = autograd.Variable(torch.randn(batch_size, time_steps, freq_dim))
+    def decode_test(self, x):
+        raise NotImplementedError
 
-    model = Model(freq_dim, output_dim)
-    output = model.forward(x)
-    print(output.size())
+    def loss(self, x, y):
+        # x should be shape (batch, sequence length, output_dim)
+        # y should be shape (batch, sequence length)
+        batch_size = x.size()[0]
+        y = y[:, 1:]
+        x = x.view((-1, self.output_dim))
+        y = y.contiguous().view(-1)
+        loss = nn.functional.cross_entropy(x, y, size_average=False)
+        loss = loss / batch_size
+        return loss
+
+class Attention(nn.Module):
+
+    def __init__(self):
+        super(Attention, self).__init__()
+
+    def forward(self, eh, dhx):
+        """
+        eh : the encoder hidden state with shape
+        (batch size, time, hidden dimension).
+        dhx : one time step of the decoder hidden state with shape
+        (batch size, hidden dimension). The hidden dimension must
+        match that of the encoder state.
+        """
+        # Compute inner product of decoder slice with every
+        # encoder slice.
+        dhx = dhx.unsqueeze(1)
+        sx = torch.bmm(eh, dhx.transpose(1,2))
+        sx = nn.functional.softmax(sx.squeeze(dim=2))
+
+        # At this point sx should have size (batch size, time).
+        # Reduce the encoder state accross time weighting each
+        # slice by its corresponding value in sx.
+        sx = sx.unsqueeze(2)
+        sx = torch.bmm(eh.transpose(1,2), sx)
+        return sx.squeeze(dim=2)
+
+def broadcast_sub(a, b):
+    b = b.unsqueeze(0).unsqueeze(0)
+    b = b.expand_as(a)
+    return a.sub(b)
+
+def broadcast_div(a, b):
+    b = b.unsqueeze(0).unsqueeze(0)
+    b = b.expand_as(a)
+    return a.div(b)
+
 

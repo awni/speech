@@ -38,7 +38,7 @@ class AudioDataset(tud.Dataset):
 
     @property
     def input_dim(self):
-        return 161 # TODO
+        return 161 # TODO, awni, set this automatically
 
     @property
     def output_dim(self):
