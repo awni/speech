@@ -1,0 +1,15 @@
+{
+    "seed" : 2017,
+    "save_path" : "/deep/group/awni/speech_models/test",
+
+    "data" : {
+        "train_set" : "/deep/group/speech/datasets/LibriSpeech/train-toy.json",
+        "dev_set" : "/deep/group/speech/datasets/LibriSpeech/dev-clean.json"
+    },
+
+    "optimizer" : {
+        "batch_size" : 4,
+        "epochs" : 100,
+        "learning_rate" : 1e-3
+    }
+}

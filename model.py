@@ -35,6 +35,8 @@ class Model(nn.Module):
         # For decoding
         self.embedding = nn.Embedding(self.output_dim, 32)
         self.dec_rnn = nn.GRUCell(32, 128)
+        self.ho = nn.Parameter(data=torch.zeros(1, 128),
+                               requires_grad=False)
         self.attend = Attention()
         self.fc = nn.Linear(128, self.output_dim)
 
@@ -84,10 +86,11 @@ class Model(nn.Module):
         # y should be shape (batch, label sequence length)
         batch_size, seq_len = y.size()
         inputs = self.embedding(y[:, :-1])
-        hx = autograd.Variable(torch.zeros(batch_size, 128))
+        hx = self.ho.expand(batch_size, self.ho.size()[1])
         out = []
         for t in range(seq_len - 1):
-            hx = self.dec_rnn(inputs[:, t, :], hx)
+            ix = inputs[:, t, :].squeeze(dim=1)
+            hx = self.dec_rnn(ix, hx)
             hx = self.attend(x, hx)
             out.append(hx)
         out = torch.stack(out, dim=1)

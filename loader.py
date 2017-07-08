@@ -107,7 +107,7 @@ def log_specgram_from_file(audio_file):
     audio, sr = wave.array_from_wave(audio_file)
     return log_specgram(audio, sr)
 
-def log_specgram(audio, sample_rate, window_size=20, step_size=10):
+def log_specgram(audio, sample_rate, window_size=20, step_size=10, eps=1e-10):
     nperseg = window_size * sample_rate / 1e3
     noverlap = step_size * sample_rate / 1e3
     _, _, spec = scipy.signal.spectrogram(audio,
@@ -116,7 +116,7 @@ def log_specgram(audio, sample_rate, window_size=20, step_size=10):
                     nperseg=nperseg,
                     noverlap=noverlap,
                     detrend=False)
-    return np.log(spec.T.astype(np.float32))
+    return np.log(spec.T.astype(np.float32) + eps)
 
 def read_data_json(data_json):
     with open(data_json) as fid:
