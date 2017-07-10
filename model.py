@@ -9,10 +9,12 @@ import torch.autograd as autograd
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, output_dim, mean, std):
+    def __init__(self, freq_dim, output_dim,
+                 mean, std, char_map):
         super(Model, self).__init__()
         self.freq_dim = freq_dim
         self.output_dim = output_dim
+        self.char_map = char_map
 
         ## For encoding
         self.mean = nn.Parameter(data=torch.Tensor(mean),
@@ -21,24 +23,24 @@ class Model(nn.Module):
                                 requires_grad=False)
 
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, (32, 2), stride=(2, 2), padding=0),
+            nn.Conv2d(1, 32, (32, 5), stride=(2, 2), padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 32, (32, 9), stride=(2, 2), padding=0),
+            nn.Conv2d(32, 32, (32, 5), stride=(2, 2), padding=0),
             nn.ReLU()
         )
 
-        self.rnn = nn.GRU(input_size=self.conv_out_dim(),
-                          hidden_size=128, num_layers=1,
+        self.rnn = nn.RNN(input_size=self.conv_out_dim(),
+                          hidden_size=256, num_layers=2,
                           batch_first=True, dropout=False,
                           bidirectional=False)
 
         # For decoding
         self.embedding = nn.Embedding(self.output_dim, 32)
-        self.dec_rnn = nn.GRUCell(32, 128)
-        self.ho = nn.Parameter(data=torch.zeros(1, 128),
+        self.dec_rnn = nn.RNNCell(32, 256)
+        self.ho = nn.Parameter(data=torch.zeros(1, 256),
                                requires_grad=False)
         self.attend = Attention()
-        self.fc = nn.Linear(128, self.output_dim)
+        self.fc = nn.Linear(256, self.output_dim)
 
 
     def conv_out_dim(self):
@@ -77,11 +79,11 @@ class Model(nn.Module):
         x = x.contiguous().view((b, t, -1))
 
         if y is not None:
-            return self.decode_train(x, y)
+            return self.decoder_train(x, y)
 
-        return self.decode_test(x)
+        return self.decoder_test(x)
 
-    def decode_train(self, x, y):
+    def decoder_train(self, x, y):
         # x should be shape (batch, time, dimension)
         # y should be shape (batch, label sequence length)
         batch_size, seq_len = y.size()
@@ -100,7 +102,7 @@ class Model(nn.Module):
         out = out.view((b, t, self.output_dim))
         return out
 
-    def decode_test(self, x):
+    def decoder_test(self, x):
         raise NotImplementedError
 
     def loss(self, x, y):

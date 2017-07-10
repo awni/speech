@@ -6,6 +6,8 @@ import json
 import numpy as np
 import random
 import scipy.signal
+import torch
+import torch.autograd as autograd
 import torch.utils.data as tud
 
 from speech.utils import wave
@@ -15,12 +17,15 @@ class AudioDataset(tud.Dataset):
     START = "<s>"
     END = "</s>"
 
-    def __init__(self, data_json, batch_size):
+    def __init__(self, data_json, batch_size, int_to_char=None):
 
         data = read_data_json(data_json)
-        chars = set(t for d in data for t in d['text'])
-        chars.update([self.START, self.END])
-        self.int_to_char = dict(enumerate(chars))
+        if int_to_char is None:
+            chars = set(t for d in data for t in d['text'])
+            chars.update([self.START, self.END])
+            self.int_to_char = dict(enumerate(chars))
+        else:
+            self.int_to_char = int_to_char
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
         for d in data:
             d['label'] = self.encode(d['text'])
@@ -48,6 +53,13 @@ class AudioDataset(tud.Dataset):
         text = [self.START] + list(text) + [self.END]
         return [self.char_to_int[t] for t in text]
 
+    def decode(self, seq):
+        text = [self.int_to_char[s] for s in seq]
+        idx = 0
+        while idx < len(text) and text[idx] != self.END:
+            idx += 1
+        return "".join(text[:idx])
+
     def __len__(self):
         return len(self.data)
 
@@ -58,7 +70,7 @@ class AudioDataset(tud.Dataset):
         return inputs, targets
 
     def compute_mean_std(self, max_samples=5):
-        idxs = range(len(self.data))
+        idxs = list(self.idxs)
         random.shuffle(idxs)
         samples = [self[idx][0]
                    for idx in idxs[:max_samples]]
@@ -91,9 +103,11 @@ def collate_fn(batch):
     inputs, labels = zip(*batch)
     inputs = zero_pad_concat(inputs)
     labels = end_pad_concat(labels)
+    inputs = autograd.Variable(torch.from_numpy(inputs))
+    labels = autograd.Variable(torch.from_numpy(labels))
     return inputs, labels
 
-def make_loader(dataset, num_workers=0):
+def make_loader(dataset, num_workers=4):
     sampler = tud.sampler.SequentialSampler(dataset)
     loader = tud.DataLoader(dataset,
                 batch_size=dataset.batch_size,
