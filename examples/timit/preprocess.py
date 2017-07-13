@@ -22,6 +22,7 @@ def load_transcripts(path):
         with open(f) as fid:
             lines = (l.strip() for l in fid)
             phonemes = [l.split()[-1] for l in lines]
+            phonemes = phonemes[1:-1] # get rid of start and end token
             data[f] = phonemes
     return data
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     path = os.path.join(args.output_directory, "LDC93S1-TIMIT/timit")
 
     print("Converting files from NIST to standard wave format...")
-    convert_to_wav(path)
+    #convert_to_wav(path)
     for d in SETS:
         print("Preprocessing {}".format(d))
         prefix = os.path.join(path, d)
