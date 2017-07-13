@@ -17,6 +17,10 @@ WAV_EXT = "wv" # using wv since NIST took wav
 def load_transcripts(path):
     pattern = os.path.join(path, "*/*/*.phn")
     files = glob.glob(pattern)
+    # Standard practic is to remove all "sa" sentences
+    # for each speaker since they are the same for all.
+    filt_sa = lambda x : os.path.basename(x)[:2] != "sa"
+    files = filter(filt_sa, files)
     data = {}
     for f in files:
         with open(f) as fid:
@@ -56,7 +60,7 @@ if __name__ == "__main__":
     path = os.path.join(args.output_directory, "LDC93S1-TIMIT/timit")
 
     print("Converting files from NIST to standard wave format...")
-    #convert_to_wav(path)
+    convert_to_wav(path)
     for d in SETS:
         print("Preprocessing {}".format(d))
         prefix = os.path.join(path, d)
