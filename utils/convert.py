@@ -35,9 +35,12 @@ if not (USE_AVCONV or USE_FFMPEG):
                    "installed to use conversion functions."))
 USE_AVCONV = not USE_FFMPEG
 
-def flac_to_wave(flac_file, wave_file, use_avconv=USE_AVCONV):
+def to_wave(audio_file, wave_file, use_avconv=USE_AVCONV):
+    """
+    Convert audio file to wave format.
+    """
     prog = AVCONV if use_avconv else FFMPEG
-    args = [prog, "-y", "-i", flac_file, wave_file]
+    args = [prog, "-y", "-i", audio_file, "-f", "wav", wave_file]
     subprocess.check_output(args, stderr=subprocess.STDOUT)
 
 if __name__ == "__main__":

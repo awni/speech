@@ -9,7 +9,7 @@ import os
 import tqdm
 import wave
 
-from speech.utils import convert
+from speech.utils import data_helpers
 from speech.utils import wave
 
 SETS = {
@@ -36,12 +36,7 @@ def path_from_key(key, prefix, ext):
     return path + os.path.extsep + ext
 
 def convert_to_wav(path):
-    pattern = os.path.join(path, "*/*/*/*.flac")
-    flac_files = glob.glob(pattern)
-    for flac in tqdm.tqdm(flac_files):
-        base, ext = os.path.splitext(flac)
-        wav = base + os.path.extsep + "wav"
-        convert.flac_to_wave(flac, wav)
+    data_helpers.convert_full_set(path, "*/*/*/*.flac")
 
 def clean_text(text):
     return text.strip().lower()
