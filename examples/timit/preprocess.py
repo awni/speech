@@ -3,15 +3,16 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import collections
 import glob
 import json
 import os
+import random
 import tqdm
 
 from speech.utils import data_helpers
 from speech.utils import wave
 
-SETS = ["train", "test"]
 WAV_EXT = "wv" # using wv since NIST took wav
 
 def load_transcripts(path):
@@ -30,17 +31,31 @@ def load_transcripts(path):
             data[f] = phonemes
     return data
 
+def split_by_speaker(data, dev_frac):
+
+    def speaker_id(f):
+        return os.path.basename(os.path.dirname(f))
+
+    speaker_dict = collections.defaultdict(list)
+    for k, v in data.items():
+        speaker_dict[speaker_id(k)].append((k, v))
+    speakers = speaker_dict.keys()
+    random.shuffle(speakers)
+    cut = int(len(speakers) * dev_frac)
+    train, dev = speakers[cut:], speakers[:cut]
+    train = dict(v for s in train for v in speaker_dict[s])
+    dev = dict(v for s in dev for v in speaker_dict[s])
+    return train, dev
+
 def convert_to_wav(path):
     data_helpers.convert_full_set(path, "*/*/*/*.wav",
             new_ext=WAV_EXT,
             use_avconv=False)
 
-def build_json(path):
-    transcripts = load_transcripts(path)
-    dirname = os.path.dirname(path)
-    basename = os.path.basename(path) + os.path.extsep + "json"
-    with open(os.path.join(dirname, basename), 'w') as fid:
-        for k, t in tqdm.tqdm(transcripts.items()):
+def build_json(data, path, set_name):
+    basename = set_name + os.path.extsep + "json"
+    with open(os.path.join(path, basename), 'w') as fid:
+        for k, t in tqdm.tqdm(data.items()):
             wave_file = os.path.splitext(k)[0] + os.path.extsep + WAV_EXT
             dur = wave.wav_duration(wave_file)
             datum = {'text' : t,
@@ -55,13 +70,23 @@ if __name__ == "__main__":
 
     parser.add_argument("output_directory",
         help="The dataset is saved in <output_directory>/LDC93S1-TIMIT")
+    parser.add_argument("--dev_frac", default=0.12, type=float,
+        help="Fraction to hold out (by speaker) for the dev set.")
     args = parser.parse_args()
 
     path = os.path.join(args.output_directory, "LDC93S1-TIMIT/timit")
 
     print("Converting files from NIST to standard wave format...")
     convert_to_wav(path)
-    for d in SETS:
-        print("Preprocessing {}".format(d))
-        prefix = os.path.join(path, d)
-        build_json(prefix)
+
+    print("Preprocessing train")
+    transcripts = load_transcripts(os.path.join(path, "train"))
+    train, dev = split_by_speaker(transcripts, dev_frac=args.dev_frac)
+    build_json(train, path, "train")
+
+    print("Preprocessing dev")
+    build_json(dev, path, "dev")
+
+    print("Preprocessing test")
+    transcripts = load_transcripts(os.path.join(path, "test"))
+    build_json(transcripts, path, "test")
