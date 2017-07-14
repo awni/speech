@@ -33,11 +33,10 @@ class AudioDataset(tud.Dataset):
         data.sort(key=lambda x : x['duration'])
 
         it_end = len(data) - batch_size + 1
-        batch_idxs = [list(range(i, i+batch_size))
+        batch_idxs = [range(i, i+batch_size)
                 for i in range(0, it_end, batch_size)]
         random.shuffle(batch_idxs)
         self.idxs = [i for b in batch_idxs for i in b]
-
         self.data = data
         self.batch_size = batch_size
 

@@ -23,25 +23,32 @@ class Model(nn.Module):
                                 requires_grad=False)
 
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, (32, 5), stride=(2, 2), padding=0),
+            nn.Conv2d(1, 32, (5, 32), stride=(2, 2), padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 32, (32, 5), stride=(2, 2), padding=0),
+            nn.Conv2d(32, 32, (5, 32), stride=(2, 2), padding=0),
             nn.ReLU()
         )
 
-        self.rnn = nn.RNN(input_size=self.conv_out_dim(),
-                          hidden_size=256, num_layers=2,
+        rnn_dim = 128
+        self.rnn = nn.GRU(input_size=self.conv_out_dim(),
+                          hidden_size=rnn_dim, num_layers=1,
                           batch_first=True, dropout=False,
                           bidirectional=False)
 
         # For decoding
-        self.embedding = nn.Embedding(self.output_dim, 32)
-        self.dec_rnn = nn.RNNCell(32, 256)
-        self.ho = nn.Parameter(data=torch.zeros(1, 256),
+        embed_dim = 32
+        self.embedding = nn.Embedding(self.output_dim, embed_dim)
+        self.dec_rnn = nn.GRUCell(embed_dim, rnn_dim)
+        self.ho = nn.Parameter(data=torch.zeros(1, rnn_dim),
                                requires_grad=False)
         self.attend = Attention()
-        self.fc = nn.Linear(256, self.output_dim)
+        self.fc = nn.Linear(rnn_dim, self.output_dim)
 
+
+    def cpu_patch(self):
+        self.cpu()
+        self.dec_rnn.bias_hh.data.squeeze_()
+        self.dec_rnn.bias_ih.data.squeeze_()
 
     def conv_out_dim(self):
         dim = self.freq_dim
@@ -76,8 +83,6 @@ class Model(nn.Module):
         x = x.view((b, t, f * c))
         x, h = self.rnn(x)
 
-        x = x.contiguous().view((b, t, -1))
-
         if y is not None:
             return self.decoder_train(x, y)
 
@@ -91,9 +96,11 @@ class Model(nn.Module):
         hx = self.ho.expand(batch_size, self.ho.size()[1])
         out = []
         for t in range(seq_len - 1):
+            # TODO, attend, to output, apply rnn for next state
             ix = inputs[:, t, :].squeeze(dim=1)
             hx = self.dec_rnn(ix, hx)
-            hx = self.attend(x, hx)
+            sx = self.attend(x, hx)
+            hx = hx + sx
             out.append(hx)
         out = torch.stack(out, dim=1)
         b, t, d = out.size()
