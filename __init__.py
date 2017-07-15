@@ -1,1 +1,1 @@
-from speech.utils.io import save
+from speech.utils.io import save, load

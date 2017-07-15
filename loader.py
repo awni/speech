@@ -12,41 +12,31 @@ import torch.utils.data as tud
 
 from speech.utils import wave
 
-class AudioDataset(tud.Dataset):
+class Preprocessor():
 
     START = "<s>"
     END = "</s>"
 
-    def __init__(self, data_json, batch_size, int_to_char=None):
-
+    def __init__(self, data_json, max_samples=100):
+        """
+        Builds a preprocessor from a dataset.
+        data_json is a file containing a json representation of each example
+        per line.
+        max_samples is the maximum number of examples to be used
+        in computing summary statistics.
+        """
         data = read_data_json(data_json)
-        if int_to_char is None:
-            chars = set(t for d in data for t in d['text'])
-            chars.update([self.START, self.END])
-            self.int_to_char = dict(enumerate(chars))
-        else:
-            self.int_to_char = int_to_char
+
+        # Compute data mean, std from sample
+        audio_files = [d['audio'] for d in data]
+        random.shuffle(audio_files)
+        self.mean, self.std = compute_mean_std(audio_files[:max_samples])
+
+        # Make char map
+        chars = set(t for d in data for t in d['text'])
+        chars.update([self.START, self.END])
+        self.int_to_char = dict(enumerate(chars))
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
-        for d in data:
-            d['label'] = self.encode(d['text'])
-
-        data.sort(key=lambda x : x['duration'])
-
-        it_end = len(data) - batch_size + 1
-        batch_idxs = [range(i, i+batch_size)
-                for i in range(0, it_end, batch_size)]
-        random.shuffle(batch_idxs)
-        self.idxs = [i for b in batch_idxs for i in b]
-        self.data = data
-        self.batch_size = batch_size
-
-    @property
-    def input_dim(self):
-        return 161 # TODO, awni, set this automatically
-
-    @property
-    def output_dim(self):
-        return len(self.char_to_int)
 
     def encode(self, text):
         text = [self.START] + list(text) + [self.END]
@@ -59,24 +49,52 @@ class AudioDataset(tud.Dataset):
             idx += 1
         return "".join(text[:idx])
 
+    def preprocess(self, wave_file, text):
+        inputs = log_specgram_from_file(wave_file)
+        inputs = (inputs - self.mean) / self.std
+        targets = self.encode(text)
+        return inputs, targets
+
+    @property
+    def input_dim(self):
+        return 161 # TODO, awni, set this automatically
+
+    @property
+    def output_dim(self):
+        return len(self.char_to_int)
+
+def compute_mean_std(audio_files):
+    samples = [log_specgram_from_file(af)
+               for af in audio_files]
+    samples = np.vstack(samples)
+    mean = np.mean(samples, axis=0)
+    std = np.std(samples, axis=0)
+    return mean, std
+
+class AudioDataset(tud.Dataset):
+
+    def __init__(self, data_json, preproc, batch_size):
+
+        data = read_data_json(data_json)
+        self.preproc = preproc
+
+        # Sort by input length and make minibatches
+        data.sort(key=lambda x : x['duration'])
+        it_end = len(data) - batch_size + 1
+        batch_idxs = [range(i, i + batch_size)
+                for i in range(0, it_end, batch_size)]
+        random.shuffle(batch_idxs)
+        self.idxs = [i for b in batch_idxs for i in b]
+        self.data = data
+
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         datum = self.data[self.idxs[idx]]
-        inputs = log_specgram_from_file(datum['audio'])
-        targets = self.encode(datum['text'])
-        return inputs, targets
-
-    def compute_mean_std(self, max_samples=5):
-        idxs = list(self.idxs)
-        random.shuffle(idxs)
-        samples = [self[idx][0]
-                   for idx in idxs[:max_samples]]
-        samples = np.vstack(samples)
-        mean = np.mean(samples, axis=0)
-        std = np.std(samples, axis=0)
-        return mean, std
+        datum = self.preproc.preprocess(datum["audio"],
+                                        datum["text"])
+        return datum
 
 def zero_pad_concat(inputs):
     # Assumes last item in batch is the longest.
@@ -106,10 +124,13 @@ def collate_fn(batch):
     labels = autograd.Variable(torch.from_numpy(labels))
     return inputs, labels
 
-def make_loader(dataset, num_workers=4):
+def make_loader(dataset_json, preproc,
+                batch_size, num_workers=4):
+    dataset = AudioDataset(dataset_json, preproc,
+                           batch_size)
     sampler = tud.sampler.SequentialSampler(dataset)
     loader = tud.DataLoader(dataset,
-                batch_size=dataset.batch_size,
+                batch_size=batch_size,
                 sampler=sampler,
                 num_workers=num_workers,
                 collate_fn=collate_fn,
@@ -120,7 +141,8 @@ def log_specgram_from_file(audio_file):
     audio, sr = wave.array_from_wave(audio_file)
     return log_specgram(audio, sr)
 
-def log_specgram(audio, sample_rate, window_size=20, step_size=10, eps=1e-10):
+def log_specgram(audio, sample_rate, window_size=20,
+                 step_size=10, eps=1e-10):
     nperseg = window_size * sample_rate / 1e3
     noverlap = step_size * sample_rate / 1e3
     _, _, spec = scipy.signal.spectrogram(audio,

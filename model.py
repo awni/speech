@@ -9,18 +9,10 @@ import torch.autograd as autograd
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, output_dim,
-                 mean, std, char_map):
+    def __init__(self, freq_dim, output_dim):
         super(Model, self).__init__()
         self.freq_dim = freq_dim
         self.output_dim = output_dim
-        self.char_map = char_map
-
-        ## For encoding
-        self.mean = nn.Parameter(data=torch.Tensor(mean),
-                                 requires_grad=False)
-        self.std = nn.Parameter(data=torch.Tensor(std),
-                                requires_grad=False)
 
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, (5, 32), stride=(2, 2), padding=0),
@@ -66,10 +58,6 @@ class Model(nn.Module):
         return filter(lambda p : p.requires_grad, self.parameters())
 
     def forward(self, x, y=None):
-        # TODO, awni, remove this when broadcasting is in stable pytorch
-        x = broadcast_sub(x, self.mean)
-        x = broadcast_div(x, self.std)
-
         x = x.unsqueeze(1)
         x = self.conv(x)
 
@@ -148,15 +136,3 @@ class Attention(nn.Module):
         sx = sx.unsqueeze(2)
         sx = torch.bmm(eh.transpose(1,2), sx)
         return sx.squeeze(dim=2)
-
-def broadcast_sub(a, b):
-    b = b.unsqueeze(0).unsqueeze(0)
-    b = b.expand_as(a)
-    return a.sub(b)
-
-def broadcast_div(a, b):
-    b = b.unsqueeze(0).unsqueeze(0)
-    b = b.expand_as(a)
-    return a.div(b)
-
-

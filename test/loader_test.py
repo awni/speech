@@ -5,16 +5,19 @@ from speech import loader
 def test_dataset():
     batch_size = 2
     data_json = "test.json"
-    dataset = loader.AudioDataset(data_json, batch_size)
+    preproc = loader.Preprocessor(data_json)
+    dataset = loader.AudioDataset(data_json, preproc, batch_size)
+
+    # Num chars plus start and end tokens
+    assert preproc.output_dim == 11
+
+    inputs, targets = dataset[0]
+
+    # Inputs should be time x frequency
+    assert inputs.shape[1] == preproc.input_dim
+    assert inputs.dtype == np.float32
 
     # Correct number of examples
     assert len(dataset.data) == 8
 
-    # Num chars plus start and end tokens
-    assert dataset.output_dim == 11
 
-    inputs, targets = dataset[0]
-    # Inputs should be time x frequency
-    assert inputs.shape[1] == dataset.input_dim
-
-    assert inputs.dtype == np.float32

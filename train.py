@@ -5,7 +5,7 @@ from __future__ import print_function
 import argparse
 import json
 import random
-import tensorboard_logger as tl
+import tensorboard_logger as tb
 import time
 import torch
 import torch.nn as nn
@@ -41,7 +41,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
         exp_w = 0.99
         avg_loss = exp_w * avg_loss + (1 - exp_w) * loss.data[0]
-        tl.log_value('train_loss', loss.data[0], it)
+        tb.log_value('train_loss', loss.data[0], it)
         tq.set_postfix(iter=it, loss=loss.data[0],
                 avg_loss=avg_loss, grad_norm=grad_norm,
                 model_time=model_t, data_time=data_t)
@@ -67,20 +67,17 @@ def run(config):
     opt_cfg = config["optimizer"]
     data_cfg = config["data"]
 
+    # Loaders
     batch_size = opt_cfg["batch_size"]
-    train_set = loader.AudioDataset(data_cfg["train_set"],
-                    batch_size)
-    char_map = train_set.int_to_char
-    train_ldr = loader.make_loader(train_set)
-    mean, std = train_set.compute_mean_std()
-
-    dev_set = loader.AudioDataset(data_cfg["dev_set"],
-                batch_size, int_to_char=char_map)
-    dev_ldr = loader.make_loader(dev_set)
+    preproc = loader.Preprocessor(data_cfg["train_set"])
+    train_ldr = loader.make_loader(data_cfg["train_set"],
+                        preproc, batch_size)
+    dev_ldr = loader.make_loader(data_cfg["dev_set"],
+                        preproc, batch_size)
 
     # Model
-    model = speech.model.Model(train_set.input_dim,
-                train_set.output_dim, mean, std, char_map)
+    model = speech.model.Model(preproc.input_dim,
+                               preproc.output_dim)
 
     if use_cuda:
         model.cuda()
@@ -93,13 +90,17 @@ def run(config):
                     momentum=opt_cfg["momentum"])
 
     run_state = (0, 0)
+    best_so_far = float("inf")
     for e in range(opt_cfg["epochs"]):
         start = time.time()
         run_state = run_epoch(model, optimizer, train_ldr, *run_state)
         msg = "Epoch {} completed in {:.2f} (s)."
         print(msg.format(e, time.time() - start))
-        tl.log_value("dev_loss", eval_dev(model, dev_ldr), e)
-        speech.save(model, config["save_path"])
+        dev_loss = eval_dev(model, dev_ldr)
+        tb.log_value("dev_loss", dev_loss, e)
+        if dev_loss < best_so_far:
+            best_so_far = dev_loss
+            speech.save(model, preproc, config["save_path"])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -118,7 +119,7 @@ if __name__ == "__main__":
     random.seed(config["seed"])
     torch.manual_seed(config["seed"])
 
-    tl.configure(config["save_path"])
+    tb.configure(config["save_path"])
 
     use_cuda = torch.cuda.is_available()
 
