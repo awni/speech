@@ -31,7 +31,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
         loss.backward()
 
-        grad_norm = nn.utils.clip_grad_norm(model.opt_params(), 200)
+        grad_norm = nn.utils.clip_grad_norm(model.parameters(), 200)
 
         optimizer.step()
         prev_end_t = end_t
@@ -85,7 +85,7 @@ def run(config):
         model.cpu_patch()
 
     # Optimizer
-    optimizer = torch.optim.SGD(model.opt_params(),
+    optimizer = torch.optim.SGD(model.parameters(),
                     lr=opt_cfg["learning_rate"],
                     momentum=opt_cfg["momentum"])
 

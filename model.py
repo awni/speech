@@ -14,6 +14,7 @@ class Model(nn.Module):
         self.freq_dim = freq_dim
         self.output_dim = output_dim
 
+        # For encoding
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, (5, 32), stride=(2, 2), padding=0),
             nn.ReLU(),
@@ -31,11 +32,9 @@ class Model(nn.Module):
         embed_dim = 32
         self.embedding = nn.Embedding(self.output_dim, embed_dim)
         self.dec_rnn = nn.GRUCell(embed_dim, rnn_dim)
-        self.ho = nn.Parameter(data=torch.zeros(1, rnn_dim),
-                               requires_grad=False)
+        self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
         self.attend = Attention()
         self.fc = nn.Linear(rnn_dim, self.output_dim)
-
 
     def cpu_patch(self):
         self.cpu()
@@ -53,9 +52,6 @@ class Model(nn.Module):
                 dim = int(math.ceil(dim))
                 channels = c.out_channels
         return dim * channels
-
-    def opt_params(self):
-        return filter(lambda p : p.requires_grad, self.parameters())
 
     def forward(self, x, y=None):
         x = x.unsqueeze(1)
@@ -77,14 +73,19 @@ class Model(nn.Module):
         return self.decoder_test(x)
 
     def decoder_train(self, x, y):
-        # x should be shape (batch, time, dimension)
-        # y should be shape (batch, label sequence length)
+        """
+        x should be shape (batch, time, dimension)
+        y should be shape (batch, label sequence length)
+        """
         batch_size, seq_len = y.size()
         inputs = self.embedding(y[:, :-1])
-        hx = self.ho.expand(batch_size, self.ho.size()[1])
-        out = []
+
+        hx = self.h_init.expand(batch_size, self.h_init.size()[1])
+
+        sx = self.attend(x, hx)
+        hx = hx + sx
+        out = [hx]
         for t in range(seq_len - 1):
-            # TODO, attend, to output, apply rnn for next state
             ix = inputs[:, t, :].squeeze(dim=1)
             hx = self.dec_rnn(ix, hx)
             sx = self.attend(x, hx)
@@ -101,11 +102,12 @@ class Model(nn.Module):
         raise NotImplementedError
 
     def loss(self, x, y):
-        # x should be shape (batch, sequence length, output_dim)
-        # y should be shape (batch, sequence length)
-        batch_size = x.size()[0]
-        y = y[:, 1:]
-        x = x.view((-1, self.output_dim))
+        """
+        x should be shape (batch, input sequence length, output_dim)
+        y should be shape (batch, label sequence length)
+        """
+        batch_size, _, out_dim = x.size()
+        x = x.view((-1, out_dim))
         y = y.contiguous().view(-1)
         loss = nn.functional.cross_entropy(x, y, size_average=False)
         loss = loss / batch_size

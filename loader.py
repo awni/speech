@@ -14,7 +14,6 @@ from speech.utils import wave
 
 class Preprocessor():
 
-    START = "<s>"
     END = "</s>"
 
     def __init__(self, data_json, max_samples=100):
@@ -34,12 +33,13 @@ class Preprocessor():
 
         # Make char map
         chars = set(t for d in data for t in d['text'])
-        chars.update([self.START, self.END])
+        chars.add(self.END)
         self.int_to_char = dict(enumerate(chars))
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
 
     def encode(self, text):
-        text = [self.START] + list(text) + [self.END]
+        text = list(text)
+        text.append(self.END)
         return [self.char_to_int[t] for t in text]
 
     def decode(self, seq):
