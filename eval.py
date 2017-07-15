@@ -13,6 +13,8 @@ import speech.model
 def eval_loop(model, ldr, use_cuda=False):
     losses = []
     for inputs, labels in tqdm.tqdm(ldr):
+        inputs.volatile = True
+        labels.volatile = True
         if use_cuda:
             inputs = inputs.cuda()
             labels = labels.cuda()
