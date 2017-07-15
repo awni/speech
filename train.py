@@ -14,6 +14,7 @@ import tqdm
 
 import speech.loader as loader
 import speech.model
+import speech.eval
 
 def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
@@ -50,15 +51,8 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     return it, avg_loss
 
 def eval_dev(model, ldr):
-    tot_loss = []
-    for inputs, labels in tqdm.tqdm(ldr):
-        if use_cuda:
-            inputs = inputs.cuda()
-            labels = labels.cuda()
-        out = model(inputs, labels)
-        loss = model.loss(out, labels)
-        tot_loss.append(loss.data[0])
-    avg_loss = sum(tot_loss) / len(tot_loss)
+    avg_loss = speech.eval.eval_loop(model,
+                    ldr, use_cuda=use_cuda)
     print("Dev Loss: {:.2f}".format(avg_loss))
     return avg_loss
 

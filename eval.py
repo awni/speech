@@ -10,33 +10,35 @@ import tqdm
 import speech.loader as loader
 import speech.model
 
-def run(model_path, dataset_json):
-
-    batch_size = 8
-
-    model = torch.load(model_path)
-    dataset = loader.AudioDataset(dataset_json, batch_size,
-                          int_to_char=model.char_map)
-
-    ldr = loader.make_loader(dataset)
-
-    if use_cuda:
-        model.cuda()
-
+def eval_loop(model, ldr, use_cuda=False):
     losses = []
-    for inputs, labels in ldr:#tqdm.tqdm(ldr):
+    for inputs, labels in tqdm.tqdm(ldr):
         if use_cuda:
             inputs = inputs.cuda()
             labels = labels.cuda()
         out = model(inputs, labels)
+        loss = model.loss(out, labels)
         #seq = np.argmax(out.cpu().data.numpy(), axis=2).squeeze()
         #print(dataset.decode(seq))
-        loss = model.loss(out, labels)
-        print(loss.data[0])
         losses.append(loss.data[0])
     avg_loss = sum(losses) / len(losses)
-    print("Dev Loss: {:.2f}".format(avg_loss))
+    return avg_loss
 
+def run(model_path, dataset_json):
+
+    use_cuda = torch.cuda.is_available()
+
+    batch_size = 8
+
+    model, preproc = speech.load(model_path)
+    ldr = loader.make_loader(dataset_json,
+            preproc, batch_size)
+
+    if use_cuda:
+        model.cuda()
+
+    avg_loss = eval_loop(model, ldr, use_cuda=use_cuda)
+    print("Average Loss: {:.2f}".format(avg_loss))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -48,8 +50,4 @@ if __name__ == "__main__":
         help="A json file with the dataset to evaluate.")
     args = parser.parse_args()
 
-    use_cuda = torch.cuda.is_available()
-
-    import random
-    random.seed(2017)
     run(args.model, args.dataset)
