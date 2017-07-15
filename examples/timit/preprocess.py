@@ -69,12 +69,12 @@ if __name__ == "__main__":
             description="Preprocess Timit dataset.")
 
     parser.add_argument("output_directory",
-        help="The dataset is saved in <output_directory>/LDC93S1-TIMIT")
+        help="Path where the dataset is saved.")
     parser.add_argument("--dev_frac", default=0.12, type=float,
         help="Fraction to hold out (by speaker) for the dev set.")
     args = parser.parse_args()
 
-    path = os.path.join(args.output_directory, "LDC93S1-TIMIT/timit")
+    path = os.path.join(args.output_directory, "timit")
 
     print("Converting files from NIST to standard wave format...")
     convert_to_wav(path)

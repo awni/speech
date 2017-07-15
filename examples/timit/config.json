@@ -1,0 +1,27 @@
+{
+    "seed" : 2017,
+    "save_path" : "examples/timit/models/test_model",
+
+    "data" : {
+        "train_set" : "examples/timit/data/timit/train.json",
+        "dev_set" : "examples/timit/data/timit/dev.json"
+    },
+
+    "optimizer" : {
+        "batch_size" : 8,
+        "epochs" : 200,
+        "learning_rate" : 1e-3,
+        "momentum" : 0.0
+    },
+
+    "model" : {
+        "encoder" : {
+            "rnn" : {
+                "dim" : 256,
+                "layers" : 1
+            }
+        },
+        "decoder" : {
+        }
+    }
+}
