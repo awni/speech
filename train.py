@@ -51,7 +51,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     return it, avg_loss
 
 def eval_dev(model, ldr):
-    avg_loss = speech.eval.eval_loop(model,
+    avg_loss, _ = speech.eval.eval_loop(model,
                     ldr, use_cuda=use_cuda)
     print("Dev Loss: {:.2f}".format(avg_loss))
     return avg_loss
@@ -73,10 +73,7 @@ def run(config):
     model = speech.model.Model(preproc.input_dim,
                                preproc.output_dim)
 
-    if use_cuda:
-        model.cuda()
-    else:
-        model.cpu_patch()
+    model.cuda() if use_cuda else model.cpu()
 
     # Optimizer
     optimizer = torch.optim.SGD(model.parameters(),

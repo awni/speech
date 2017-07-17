@@ -12,6 +12,7 @@ import speech.model
 
 def eval_loop(model, ldr, use_cuda=False):
     losses = []
+    corr = 0; tot = 0
     for inputs, labels in tqdm.tqdm(ldr):
         inputs.volatile = True
         labels.volatile = True
@@ -20,11 +21,13 @@ def eval_loop(model, ldr, use_cuda=False):
             labels = labels.cuda()
         out = model(inputs, labels)
         loss = model.loss(out, labels)
-        #seq = np.argmax(out.cpu().data.numpy(), axis=2).squeeze()
-        #print(dataset.decode(seq))
+        _, argmaxs = out.max(dim=2)
+        corr += torch.sum((argmaxs == labels).data)
+        tot += labels.numel()
         losses.append(loss.data[0])
     avg_loss = sum(losses) / len(losses)
-    return avg_loss
+    avg_acc = corr / tot
+    return avg_loss, avg_acc
 
 def run(model_path, dataset_json):
 
@@ -36,11 +39,10 @@ def run(model_path, dataset_json):
     ldr = loader.make_loader(dataset_json,
             preproc, batch_size)
 
-    if use_cuda:
-        model.cuda()
+    model.cuda() if use_cuda else model.cpu()
 
-    avg_loss = eval_loop(model, ldr, use_cuda=use_cuda)
-    print("Average Loss: {:.2f}".format(avg_loss))
+    avg_loss, avg_acc = eval_loop(model, ldr, use_cuda=use_cuda)
+    print("Avg Loss: {:.2f}, Avg Acc {:.2f}".format(avg_loss, avg_acc))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
