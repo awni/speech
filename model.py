@@ -36,8 +36,8 @@ class Model(nn.Module):
         self.attend = Attention()
         self.fc = nn.Linear(rnn_dim, self.output_dim)
 
-    def cpu_patch(self):
-        self.cpu()
+    def cpu(self):
+        super(Model, self).cpu()
         self.dec_rnn.bias_hh.data.squeeze_()
         self.dec_rnn.bias_ih.data.squeeze_()
 
@@ -53,7 +53,15 @@ class Model(nn.Module):
                 channels = c.out_channels
         return dim * channels
 
-    def forward(self, x, y=None):
+    def forward(self, x, y=None, keep_alignments=False):
+        x = self.encode(x)
+
+        if y is not None:
+            return self.decoder_train(x, y, keep_alignments)
+
+        return self.decoder_test(x)
+
+    def encode(self, x):
         x = x.unsqueeze(1)
         x = self.conv(x)
 
@@ -66,13 +74,9 @@ class Model(nn.Module):
         b, t, f, c = x.size()
         x = x.view((b, t, f * c))
         x, h = self.rnn(x)
+        return x
 
-        if y is not None:
-            return self.decoder_train(x, y)
-
-        return self.decoder_test(x)
-
-    def decoder_train(self, x, y):
+    def decoder_train(self, x, y, keep_alignments=False):
         """
         x should be shape (batch, time, dimension)
         y should be shape (batch, label sequence length)
@@ -82,13 +86,16 @@ class Model(nn.Module):
 
         hx = self.h_init.expand(batch_size, self.h_init.size()[1])
 
-        sx = self.attend(x, hx)
+        sx, ax = self.attend(x, hx)
         hx = hx + sx
         out = [hx]
+        alignments = [ax] if keep_alignments else None
         for t in range(seq_len - 1):
             ix = inputs[:, t, :].squeeze(dim=1)
             hx = self.dec_rnn(ix, hx)
-            sx = self.attend(x, hx)
+            sx, ax = self.attend(x, hx)
+            if keep_alignments:
+                alignments.append(ax)
             hx = hx + sx
             out.append(hx)
         out = torch.stack(out, dim=1)
@@ -96,6 +103,8 @@ class Model(nn.Module):
         out = out.view((b * t, d))
         out = self.fc(out)
         out = out.view((b, t, self.output_dim))
+        if keep_alignments:
+            return out, alignments
         return out
 
     def decoder_test(self, x):
@@ -125,16 +134,19 @@ class Attention(nn.Module):
         dhx : one time step of the decoder hidden state with shape
         (batch size, hidden dimension). The hidden dimension must
         match that of the encoder state.
+        Returns the summary of the encoded hidden state
+        and the corresponding alignment.
         """
         # Compute inner product of decoder slice with every
         # encoder slice.
         dhx = dhx.unsqueeze(1)
-        sx = torch.bmm(eh, dhx.transpose(1,2))
-        sx = nn.functional.softmax(sx.squeeze(dim=2))
+        ax = torch.bmm(eh, dhx.transpose(1,2))
+        ax = nn.functional.softmax(ax.squeeze(dim=2))
 
         # At this point sx should have size (batch size, time).
         # Reduce the encoder state accross time weighting each
         # slice by its corresponding value in sx.
-        sx = sx.unsqueeze(2)
+        sx = ax.unsqueeze(2)
         sx = torch.bmm(eh.transpose(1,2), sx)
-        return sx.squeeze(dim=2)
+        return sx.squeeze(dim=2), ax
+
