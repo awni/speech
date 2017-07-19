@@ -25,3 +25,5 @@ def test_save():
     msd = model.state_dict()
     for k, v in s_model.state_dict().items():
         assert k in msd
+    assert hasattr(s_model, 'freq_dim')
+    assert hasattr(s_model, 'output_dim')
