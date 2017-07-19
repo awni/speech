@@ -22,16 +22,15 @@ class Model(nn.Module):
             nn.ReLU()
         )
 
-        rnn_dim = 128
+        rnn_dim = 64
         self.rnn = nn.GRU(input_size=self.conv_out_dim(),
                           hidden_size=rnn_dim, num_layers=1,
                           batch_first=True, dropout=False,
                           bidirectional=False)
 
         # For decoding
-        embed_dim = 32
-        self.embedding = nn.Embedding(self.output_dim, embed_dim)
-        self.dec_rnn = nn.GRUCell(embed_dim, rnn_dim)
+        self.embedding = nn.Embedding(self.output_dim, rnn_dim)
+        self.dec_rnn = nn.GRUCell(rnn_dim, rnn_dim)
         self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
         self.attend = Attention()
         self.fc = nn.Linear(rnn_dim, self.output_dim)
@@ -87,17 +86,16 @@ class Model(nn.Module):
         hx = self.h_init.expand(batch_size, self.h_init.size()[1])
 
         sx, ax = self.attend(x, hx)
-        hx = hx + sx
-        out = [hx]
+        out = [hx + sx]
         alignments = [ax] if keep_alignments else None
         for t in range(seq_len - 1):
             ix = inputs[:, t, :].squeeze(dim=1)
-            hx = self.dec_rnn(ix, hx)
+            hx = self.dec_rnn(ix + sx, hx)
             sx, ax = self.attend(x, hx)
             if keep_alignments:
                 alignments.append(ax)
             hx = hx + sx
-            out.append(hx)
+            out.append(hx + sx)
         out = torch.stack(out, dim=1)
         b, t, d = out.size()
         out = out.view((b * t, d))
