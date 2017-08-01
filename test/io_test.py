@@ -7,7 +7,12 @@ def test_save():
 
     freq_dim = 120
     output_dim = 10
-    model = speech.model.Model(freq_dim, output_dim)
+    config = {
+        "encoder_layers" : 1,
+        "rnn_dim" : 16
+    }
+
+    model = speech.model.Model(freq_dim, output_dim, config)
 
     batch_size = 2
     data_json = "test.json"

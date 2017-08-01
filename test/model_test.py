@@ -28,10 +28,11 @@ def test_model():
     output = model.forward(x, y)
 
     x_enc = model.encode(x)
-    out, _, _ = model.decode(x_enc, y)
+    out, aligns = model.decode(x_enc, y)
 
     hx = None
     out_s = []
+    # TODO, decode_step test is currently failing
     for t in range(seq_len - 1):
         ox, hx = model.decode_step(x_enc, y[:,t], hx=hx)
         out_s.append(ox)
