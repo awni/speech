@@ -22,7 +22,7 @@ def eval_loop(model, ldr, use_cuda=False):
         out = model(inputs, labels)
         loss = model.loss(out, labels)
         _, argmaxs = out.max(dim=2)
-        corr += torch.sum((argmaxs == labels).data)
+        corr += torch.sum((argmaxs == labels[:,1:]).data)
         tot += labels.numel()
         losses.append(loss.data[0])
     avg_loss = sum(losses) / len(losses)

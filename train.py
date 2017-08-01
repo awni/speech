@@ -60,6 +60,7 @@ def run(config):
 
     opt_cfg = config["optimizer"]
     data_cfg = config["data"]
+    model_cfg = config["model"]
 
     # Loaders
     batch_size = opt_cfg["batch_size"]
@@ -71,8 +72,8 @@ def run(config):
 
     # Model
     model = speech.model.Model(preproc.input_dim,
-                               preproc.output_dim)
-
+                               preproc.output_dim,
+                               model_cfg)
     model.cuda() if use_cuda else model.cpu()
 
     # Optimizer

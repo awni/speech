@@ -9,7 +9,7 @@ import torch.autograd as autograd
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, output_dim):
+    def __init__(self, freq_dim, output_dim, config):
         super(Model, self).__init__()
         self.freq_dim = freq_dim
         self.output_dim = output_dim
@@ -22,9 +22,10 @@ class Model(nn.Module):
             nn.ReLU()
         )
 
-        rnn_dim = 64
+        rnn_dim = config["rnn_dim"]
         self.rnn = nn.GRU(input_size=self.conv_out_dim(),
-                          hidden_size=rnn_dim, num_layers=1,
+                          hidden_size=rnn_dim,
+                          num_layers=config["encoder_layers"],
                           batch_first=True, dropout=False,
                           bidirectional=False)
 
@@ -52,13 +53,10 @@ class Model(nn.Module):
                 channels = c.out_channels
         return dim * channels
 
-    def forward(self, x, y=None, keep_alignments=False):
+    def forward(self, x, y):
         x = self.encode(x)
-
-        if y is not None:
-            return self.decoder_train(x, y, keep_alignments)
-
-        return self.decoder_test(x)
+        out, _ = self.decode(x, y)
+        return out
 
     def encode(self, x):
         x = x.unsqueeze(1)
@@ -75,9 +73,9 @@ class Model(nn.Module):
         x, h = self.rnn(x)
         return x
 
-    def decoder_train(self, x, y, keep_alignments=False):
+    def decode(self, x, y):
         """
-        x should be shape (batch, time, dimension)
+        x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
         """
         batch_size, seq_len = y.size()
@@ -85,28 +83,45 @@ class Model(nn.Module):
 
         hx = self.h_init.expand(batch_size, self.h_init.size()[1])
 
-        sx, ax = self.attend(x, hx)
-        out = [hx + sx]
-        alignments = [ax] if keep_alignments else None
+        out = []; aligns = []
         for t in range(seq_len - 1):
             ix = inputs[:, t, :].squeeze(dim=1)
-            hx = self.dec_rnn(ix + sx, hx)
             sx, ax = self.attend(x, hx)
-            if keep_alignments:
-                alignments.append(ax)
+            hx = self.dec_rnn(ix + sx, hx + sx)
             hx = hx + sx
-            out.append(hx + sx)
+            aligns.append(ax)
+            out.append(hx)
+
         out = torch.stack(out, dim=1)
         b, t, d = out.size()
         out = out.view((b * t, d))
         out = self.fc(out)
         out = out.view((b, t, self.output_dim))
-        if keep_alignments:
-            return out, alignments
-        return out
 
-    def decoder_test(self, x):
-        raise NotImplementedError
+        aligns = torch.cat(aligns, dim=0)
+
+        return out, aligns
+
+    def decode_step(self, x, y, hx=None):
+        """
+        x should be shape (batch, time, hidden dimension)
+        y should be shape (batch, label sequence length)
+        """
+
+
+        batch_size = x.size()[0]
+
+        if hx is None:
+            hx = self.h_init.expand(batch_size, self.h_init.size()[1])
+
+        ix = self.embedding(y)
+        sx, _ = self.attend(x, hx)
+        hx = self.dec_rnn(ix + sx, hx + sx)
+
+        out = hx + sx
+        out = self.fc(out)
+
+        return out, hx
 
     def loss(self, x, y):
         """
@@ -115,7 +130,7 @@ class Model(nn.Module):
         """
         batch_size, _, out_dim = x.size()
         x = x.view((-1, out_dim))
-        y = y.contiguous().view(-1)
+        y = y[:,1:].contiguous().view(-1)
         loss = nn.functional.cross_entropy(x, y, size_average=False)
         loss = loss / batch_size
         return loss

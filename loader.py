@@ -15,6 +15,7 @@ from speech.utils import wave
 class Preprocessor():
 
     END = "</s>"
+    START = "<s>"
 
     def __init__(self, data_json, max_samples=100):
         """
@@ -33,13 +34,12 @@ class Preprocessor():
 
         # Make char map
         chars = set(t for d in data for t in d['text'])
-        chars.add(self.END)
+        chars.update([self.END, self.START])
         self.int_to_char = dict(enumerate(chars))
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
 
     def encode(self, text):
-        text = list(text)
-        text.append(self.END)
+        text = [self.START] + list(text) + [self.END]
         return [self.char_to_int[t] for t in text]
 
     def decode(self, seq):
@@ -61,7 +61,7 @@ class Preprocessor():
 
     @property
     def output_dim(self):
-        return len(self.char_to_int)
+        return len(self.int_to_char)
 
 def compute_mean_std(audio_files):
     samples = [log_specgram_from_file(af)
