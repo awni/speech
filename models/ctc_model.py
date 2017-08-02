@@ -38,19 +38,8 @@ class CTC(model.Model):
         x_lens = (i.shape[0] for i in inputs)
         x_lens = [self.conv_out_size(i, 0) for i in x_lens]
         x_lens = torch.IntTensor(x_lens)
-        x = torch.FloatTensor(zero_pad_concat(inputs))
+        x = torch.FloatTensor(model.zero_pad_concat(inputs))
         y_lens = torch.IntTensor([len(l) for l in labels])
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
         return [autograd.Variable(v) for v in batch]
-
-def zero_pad_concat(inputs):
-    # Assumes last item in batch is the longest.
-    shape = inputs[-1].shape
-    shape = (len(inputs), shape[0], shape[1])
-    cat_inputs = np.zeros(shape, dtype=np.float32)
-    for e, inp in enumerate(inputs):
-        cat_inputs[e, :inp.shape[0], :] = inp
-    return cat_inputs
-
-

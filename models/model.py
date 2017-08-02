@@ -92,3 +92,11 @@ class LinearND(nn.Module):
         size[-1] = out.size()[-1]
         return out.view(size)
 
+def zero_pad_concat(inputs):
+    max_t = max(inp.shape[0] for inp in inputs)
+    shape = (len(inputs), max_len, inputs[0][0])
+    input_mat = np.zeros(shape, dtype=np.float32)
+    for e, inp in enumerate(inputs):
+        input_mat[e, :inp.shape[0], :] = inp
+    return input_mat
+

@@ -22,7 +22,10 @@ class Seq2Seq(model.Model):
 
     def loss(self, batch):
         x, y = collate(batch)
-        # TODO check cuda and move if needed
+        if self.is_cuda:
+            x = x.cuda()
+            y = y.cuda()
+
         out = self(x, y)
 
         batch_size, _, out_dim = out.size()
@@ -86,15 +89,6 @@ class Seq2Seq(model.Model):
 
         return out, hx
 
-def zero_pad_concat(inputs):
-    # Assumes last item in batch is the longest.
-    shape = inputs[-1].shape
-    shape = (len(inputs), shape[0], shape[1])
-    cat_inputs = np.zeros(shape, dtype=np.float32)
-    for e, inp in enumerate(inputs):
-        cat_inputs[e, :inp.shape[0], :] = inp
-    return cat_inputs
-
 def end_pad_concat(labels):
     # Assumes last item in each example is the end token.
     batch_size = len(labels)
@@ -108,7 +102,7 @@ def end_pad_concat(labels):
 
 def collate(batch):
     inputs, labels = zip(*batch)
-    inputs = zero_pad_concat(inputs)
+    inputs = model.zero_pad_concat(inputs)
     labels = end_pad_concat(labels)
     inputs = autograd.Variable(torch.from_numpy(inputs))
     labels = autograd.Variable(torch.from_numpy(labels))
