@@ -43,3 +43,15 @@ class CTC(model.Model):
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
         return [autograd.Variable(v) for v in batch]
+
+    @staticmethod
+    def max_decode(pred, blank=0):
+        prev = pred[0]
+        seq = [prev] if prev is not blank else []
+        for p in pred[1:]:
+            if p != blank and p != prev:
+                seq.append(p)
+            prev = p
+        return seq
+
+
