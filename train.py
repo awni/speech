@@ -13,7 +13,7 @@ import torch.optim
 import tqdm
 
 import speech.loader as loader
-import speech.model
+from speech.models import CTC as Model
 import speech.eval
 
 def run_epoch(model, optimizer, train_ldr, it, avg_loss):
@@ -21,15 +21,10 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     model_t = 0.0; data_t = 0.0
     end_t = time.time()
     tq = tqdm.tqdm(train_ldr)
-    for inputs, labels in tq:
-        if use_cuda:
-            inputs = inputs.cuda()
-            labels = labels.cuda()
+    for batch in tq:
         start_t = time.time()
         optimizer.zero_grad()
-        out = model(inputs, labels)
-        loss = model.loss(out, labels)
-
+        loss = model.loss(batch)
         loss.backward()
 
         grad_norm = nn.utils.clip_grad_norm(model.parameters(), 200)
@@ -64,16 +59,17 @@ def run(config):
 
     # Loaders
     batch_size = opt_cfg["batch_size"]
-    preproc = loader.Preprocessor(data_cfg["train_set"])
+    preproc = loader.Preprocessor(data_cfg["train_set"],
+                                  start_and_end=False)
     train_ldr = loader.make_loader(data_cfg["train_set"],
                         preproc, batch_size)
     dev_ldr = loader.make_loader(data_cfg["dev_set"],
                         preproc, batch_size)
 
     # Model
-    model = speech.model.Model(preproc.input_dim,
-                               preproc.output_dim,
-                               model_cfg)
+    model = Model(preproc.input_dim,
+                  preproc.output_dim,
+                  model_cfg)
     model.cuda() if use_cuda else model.cpu()
 
     # Optimizer

@@ -17,13 +17,15 @@ class Preprocessor():
     END = "</s>"
     START = "<s>"
 
-    def __init__(self, data_json, max_samples=100):
+    def __init__(self, data_json, max_samples=100, start_and_end=True):
         """
         Builds a preprocessor from a dataset.
-        data_json is a file containing a json representation of each example
-        per line.
-        max_samples is the maximum number of examples to be used
-        in computing summary statistics.
+        Arguments:
+            data_json (string): A file containing a json representation
+                of each example per line.
+            max_samples (int): The maximum number of examples to be used
+                in computing summary statistics.
+            start_and_end (bool): Include start and end tokens in labels.
         """
         data = read_data_json(data_json)
 
@@ -34,16 +36,24 @@ class Preprocessor():
 
         # Make char map
         chars = set(t for d in data for t in d['text'])
-        chars.update([self.END, self.START])
+        if start_and_end:
+            chars.update([self.END, self.START])
+        self.start_and_end = start_and_end
         self.int_to_char = dict(enumerate(chars))
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
 
     def encode(self, text):
-        text = [self.START] + list(text) + [self.END]
+        text = list(text)
+        if self.start_and_end:
+            text = [self.START] + text + [self.END]
         return [self.char_to_int[t] for t in text]
 
     def decode(self, seq):
         text = [self.int_to_char[s] for s in seq]
+
+        if not self.start_and_end:
+            return "".join(text)
+
         idx = 0
         while idx < len(text) and text[idx] != self.END:
             idx += 1
@@ -96,34 +106,6 @@ class AudioDataset(tud.Dataset):
                                         datum["text"])
         return datum
 
-def zero_pad_concat(inputs):
-    # Assumes last item in batch is the longest.
-    shape = inputs[-1].shape
-    shape = (len(inputs), shape[0], shape[1])
-    cat_inputs = np.zeros(shape, dtype=np.float32)
-    for e, inp in enumerate(inputs):
-        cat_inputs[e, :inp.shape[0], :] = inp
-    return cat_inputs
-
-def end_pad_concat(labels):
-    # Assumes last item in each example is the end token.
-    batch_size = len(labels)
-    end_tok = labels[0][-1]
-    max_len = max(len(l) for l in labels)
-    cat_labels = np.full((batch_size, max_len),
-                    fill_value=end_tok, dtype=np.int64)
-    for e, l in enumerate(labels):
-        cat_labels[e, :len(l)] = l
-    return cat_labels
-
-def collate_fn(batch):
-    inputs, labels = zip(*batch)
-    inputs = zero_pad_concat(inputs)
-    labels = end_pad_concat(labels)
-    inputs = autograd.Variable(torch.from_numpy(inputs))
-    labels = autograd.Variable(torch.from_numpy(labels))
-    return inputs, labels
-
 def make_loader(dataset_json, preproc,
                 batch_size, num_workers=4):
     dataset = AudioDataset(dataset_json, preproc,
@@ -133,7 +115,7 @@ def make_loader(dataset_json, preproc,
                 batch_size=batch_size,
                 sampler=sampler,
                 num_workers=num_workers,
-                collate_fn=collate_fn,
+                collate_fn=lambda x : x,
                 drop_last=True)
     return loader
 
