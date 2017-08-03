@@ -21,7 +21,7 @@ class Seq2Seq(model.Model):
         self.fc = model.LinearND(rnn_dim, output_dim)
 
     def loss(self, batch):
-        x, y = collate(batch)
+        x, y = collate(*batch)
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
@@ -100,8 +100,7 @@ def end_pad_concat(labels):
         cat_labels[e, :len(l)] = l
     return cat_labels
 
-def collate(batch):
-    inputs, labels = zip(*batch)
+def collate(inputs, labels):
     inputs = model.zero_pad_concat(inputs)
     labels = end_pad_concat(labels)
     inputs = autograd.Variable(torch.from_numpy(inputs))

@@ -12,29 +12,24 @@ from . import model
 class CTC(model.Model):
     def __init__(self, freq_dim, output_dim, config):
         super(CTC, self).__init__(freq_dim, output_dim, config)
+        self.fc = model.LinearND(config["rnn_dim"], output_dim)
+        self.blank = self.output_dim - 1
 
-        # For decoding
-        rnn_dim = config["rnn_dim"]
-        self.fc = model.LinearND(rnn_dim, output_dim)
-
-    def forward(self, x):
+    def forward(self, batch):
+        x, y, x_lens, y_lens = self.collate(*batch)
+        if self.is_cuda:
+            x = x.cuda()
         x = self.encode(x)
         return self.fc(x)
 
-    def loss(self, batch):
-        x, y, x_lens, y_lens = self.collate(batch)
-        if self.is_cuda:
-            x = x.cuda()
-
-        out = self(x)
-
+    def loss(self, out, batch):
+        x, y, x_lens, y_lens = self.collate(*batch)
         batch_size, _, out_dim = out.size()
         loss_fn = ctc.CTCLoss()
         loss = loss_fn(out, y, x_lens, y_lens)
         return loss
 
-    def collate(self, batch):
-        inputs, labels = zip(*batch)
+    def collate(self, inputs, labels):
         x_lens = (i.shape[0] for i in inputs)
         x_lens = [self.conv_out_size(i, 0) for i in x_lens]
         x_lens = torch.IntTensor(x_lens)
@@ -43,6 +38,15 @@ class CTC(model.Model):
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
         return [autograd.Variable(v) for v in batch]
+
+    def predict(self, probs):
+        _, argmaxs = probs.max(dim=2)
+        if argmaxs.is_cuda:
+            argmaxs = argmaxs.cpu()
+        argmaxs = argmaxs.data.numpy()
+        argmaxs = argmaxs.squeeze(axis=2)
+        return [self.max_decode(seq, blank=self.blank)
+                for seq in argmaxs]
 
     @staticmethod
     def max_decode(pred, blank=0):
@@ -53,5 +57,3 @@ class CTC(model.Model):
                 seq.append(p)
             prev = p
         return seq
-
-

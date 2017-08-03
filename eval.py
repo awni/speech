@@ -3,26 +3,39 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import numpy as np
+import editdistance
 import torch
 import tqdm
 
+import speech
 import speech.loader as loader
+
+def compute_cer(labels, preds):
+    """
+    Arguments:
+        labels (list): list of grount truth sequences.
+        preds (list): list of predicted sequences.
+    Returns the CER for the full set.
+    """
+    dist = sum(editdistance.eval(label, pred)
+                for label, pred in zip(labels, preds))
+    total = sum(len(label) for label in labels)
+    return dist / total
 
 def eval_loop(model, ldr, use_cuda=False):
     losses = []
-    corr = 0; tot = 0
+    all_preds = []; all_labels = []
     for batch in tqdm.tqdm(ldr):
         # TODO, handle volatile
-        loss = model.loss(batch)
-        #_, argmaxs = out.max(dim=2)
-        # TODO, handle accuracy, probably have to push this into the model
-        #corr += torch.sum((argmaxs == labels[:,1:]).data)
-        #tot += labels.numel()
+        probs = model(batch)
+        loss = model.loss(probs, batch)
+        preds = model.predict(probs)
         losses.append(loss.data[0])
+        all_preds.extend(preds)
+        all_labels.extend(batch[1])
+    cer = compute_cer(all_labels, all_preds)
     avg_loss = sum(losses) / len(losses)
-    avg_acc = 0 #corr / tot
-    return avg_loss, avg_acc
+    return avg_loss, cer
 
 def run(model_path, dataset_json, batch_size=8):
 
@@ -34,9 +47,9 @@ def run(model_path, dataset_json, batch_size=8):
 
     model.cuda() if use_cuda else model.cpu()
 
-    avg_loss, avg_acc = eval_loop(model, ldr, use_cuda=use_cuda)
-    msg = "Avg Loss: {:.2f}, Avg Acc {:.2f}"
-    print(msg.format(avg_loss, avg_acc))
+    avg_loss, cer = eval_loop(model, ldr, use_cuda=use_cuda)
+    msg = "Avg Loss: {:.2f}, CER {:.2f}"
+    print(msg.format(avg_loss, cer))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

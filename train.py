@@ -24,7 +24,8 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     for batch in tq:
         start_t = time.time()
         optimizer.zero_grad()
-        loss = model.loss(batch)
+        out = model(batch)
+        loss = model.loss(out, batch)
         loss.backward()
 
         grad_norm = nn.utils.clip_grad_norm(model.parameters(), 200)
