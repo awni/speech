@@ -21,7 +21,7 @@ def compute_cer(labels, preds):
     total = sum(len(label) for label in labels)
     return dist / total
 
-def eval_loop(model, ldr, use_cuda=False):
+def eval_loop(model, ldr):
     losses = []
     all_preds = []; all_labels = []
     for batch in tqdm.tqdm(ldr):
@@ -40,13 +40,13 @@ def run(model_path, dataset_json, batch_size=8):
 
     use_cuda = torch.cuda.is_available()
 
-    model, preproc = speech.load(model_path, tag="best")
+    model, preproc = speech.load(model_path)#, tag="best")
     ldr = loader.make_loader(dataset_json,
             preproc, batch_size)
 
     model.cuda() if use_cuda else model.cpu()
 
-    avg_loss, cer = eval_loop(model, ldr, use_cuda=use_cuda)
+    avg_loss, cer = eval_loop(model, ldr)
     msg = "Avg Loss: {:.2f}, CER {:.2f}"
     print(msg.format(avg_loss, cer))
 
