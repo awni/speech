@@ -12,7 +12,7 @@ from . import model
 class CTC(model.Model):
     def __init__(self, freq_dim, output_dim, config):
         super(CTC, self).__init__(freq_dim, output_dim, config)
-        self.fc = model.LinearND(config["rnn_dim"], output_dim)
+        self.fc = model.LinearND(self.encoder_dim, output_dim)
         self.blank = self.output_dim - 1
 
     def forward(self, batch):

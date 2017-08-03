@@ -14,21 +14,27 @@ class Model(nn.Module):
         self.freq_dim = freq_dim
         self.output_dim = output_dim
 
-        # For encoding
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, (5, 32), stride=(2, 2), padding=0),
-            nn.ReLU(),
-            nn.Conv2d(32, 32, (5, 32), stride=(2, 2), padding=0),
-            nn.ReLU()
-        )
+        encoder_cfg = config["encoder"]
+        conv_cfg = encoder_cfg["conv"]
 
-        rnn_dim = config["rnn_dim"]
-        input_size = 32 * self.conv_out_size(freq_dim, 1)
-        self.rnn = nn.GRU(input_size=input_size,
-                          hidden_size=rnn_dim,
-                          num_layers=config["encoder_layers"],
+        convs = []
+        in_c = 1
+        for out_c, h, w, s in conv_cfg:
+            conv = nn.Conv2d(in_c, out_c, (h, w),
+                             stride=(s, s), padding=0)
+            convs.extend([conv, nn.ReLU()])
+            in_c = out_c
+
+        self.conv = nn.Sequential(*convs)
+        conv_out = out_c * self.conv_out_size(freq_dim, 1)
+
+        rnn_cfg = encoder_cfg["rnn"]
+        self.rnn = nn.GRU(input_size=conv_out,
+                          hidden_size=rnn_cfg["dim"],
+                          num_layers=rnn_cfg["layers"],
                           batch_first=True, dropout=False,
-                          bidirectional=False)
+                          bidirectional=rnn_cfg["bidirectional"])
+        self._encoder_dim = rnn_cfg["dim"]
 
     def conv_out_size(self, n, dim):
         for c in self.conv.children():
@@ -71,6 +77,10 @@ class Model(nn.Module):
     @property
     def is_cuda(self):
         return self.parameters().next().is_cuda
+
+    @property
+    def encoder_dim(self):
+        return self._encoder_dim
 
 class LinearND(nn.Module):
 

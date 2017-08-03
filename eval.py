@@ -40,14 +40,14 @@ def run(model_path, dataset_json, batch_size=8):
 
     use_cuda = torch.cuda.is_available()
 
-    model, preproc = speech.load(model_path)#, tag="best")
+    model, preproc = speech.load(model_path, tag="best")
     ldr = loader.make_loader(dataset_json,
             preproc, batch_size)
 
     model.cuda() if use_cuda else model.cpu()
 
     avg_loss, cer = eval_loop(model, ldr)
-    msg = "Avg Loss: {:.2f}, CER {:.2f}"
+    msg = "Avg Loss: {:.2f}, CER {:.3f}"
     print(msg.format(avg_loss, cer))
 
 if __name__ == "__main__":

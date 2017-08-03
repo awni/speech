@@ -3,16 +3,15 @@ import tempfile
 import speech.models
 import speech.loader
 
+import shared
+
 def test_save():
 
     freq_dim = 120
     output_dim = 10
-    config = {
-        "encoder_layers" : 1,
-        "rnn_dim" : 16
-    }
 
-    model = speech.models.Model(freq_dim, output_dim, config)
+    model = speech.models.Model(freq_dim, output_dim,
+                shared.model_config)
 
     batch_size = 2
     data_json = "test.json"
@@ -32,3 +31,6 @@ def test_save():
         assert k in msd
     assert hasattr(s_model, 'freq_dim')
     assert hasattr(s_model, 'output_dim')
+
+    assert hasattr(s_model, 'encoder_dim')
+    assert hasattr(s_model, 'is_cuda')

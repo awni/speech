@@ -5,6 +5,8 @@ import torch.autograd as autograd
 
 import speech.models
 
+import shared
+
 def test_model():
     time_steps = 200
     freq_dim = 120
@@ -12,15 +14,10 @@ def test_model():
     batch_size = 4
     seq_len = 20
 
-    config = {
-        "encoder_layers" : 1,
-        "rnn_dim" : 16
-    }
-
     np.random.seed(1337)
     torch.manual_seed(1337)
 
-    model = speech.models.Model(freq_dim, output_dim, config)
+    model = speech.models.Model(freq_dim, output_dim, shared.model_config)
 
     x = autograd.Variable(torch.randn(batch_size, time_steps, freq_dim))
     labels = np.random.randint(0, output_dim, (batch_size, seq_len))

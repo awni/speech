@@ -103,7 +103,8 @@ class AudioDataset(tud.Dataset):
 
 class BatchRandomSampler(tud.sampler.Sampler):
     """
-    Randomly samples by batch withouth replacement.
+    Batches the data consecutively and randomly samples
+    by batch without replacement.
     """
 
     def __init__(self, data_source, batch_size):
