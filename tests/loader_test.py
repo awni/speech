@@ -20,4 +20,14 @@ def test_dataset():
     # Correct number of examples
     assert len(dataset.data) == 8
 
+def test_loader():
 
+    batch_size = 2
+    data_json = "test.json"
+    preproc = loader.Preprocessor(data_json)
+    ldr = loader.make_loader(data_json, preproc,
+            batch_size, num_workers=0)
+
+    # Test that batches are properly sorted by size
+    for inputs, labels in ldr:
+        assert inputs[0].shape == inputs[1].shape

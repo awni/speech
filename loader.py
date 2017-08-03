@@ -88,29 +88,42 @@ class AudioDataset(tud.Dataset):
         data = read_data_json(data_json)
         self.preproc = preproc
 
-        # Sort by input length and make minibatches
+        # Sort by input length
         data.sort(key=lambda x : x['duration'])
-        it_end = len(data) - batch_size + 1
-        batch_idxs = [range(i, i + batch_size)
-                for i in range(0, it_end, batch_size)]
-        random.shuffle(batch_idxs)
-        self.idxs = [i for b in batch_idxs for i in b]
         self.data = data
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        datum = self.data[self.idxs[idx]]
+        datum = self.data[idx]
         datum = self.preproc.preprocess(datum["audio"],
                                         datum["text"])
         return datum
+
+class BatchRandomSampler(tud.sampler.Sampler):
+    """
+    Randomly samples by batch withouth replacement.
+    """
+
+    def __init__(self, data_source, batch_size):
+        it_end = len(data_source) - batch_size + 1
+        self.batches = [range(i, i + batch_size)
+                for i in range(0, it_end, batch_size)]
+        self.data_source = data_source
+
+    def __iter__(self):
+        random.shuffle(self.batches)
+        return (i for b in self.batches for i in b)
+
+    def __len__(self):
+        return len(self.data_source)
 
 def make_loader(dataset_json, preproc,
                 batch_size, num_workers=4):
     dataset = AudioDataset(dataset_json, preproc,
                            batch_size)
-    sampler = tud.sampler.SequentialSampler(dataset)
+    sampler = BatchRandomSampler(dataset, batch_size)
     loader = tud.DataLoader(dataset,
                 batch_size=batch_size,
                 sampler=sampler,
