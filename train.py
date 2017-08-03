@@ -47,8 +47,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     return it, avg_loss
 
 def eval_dev(model, ldr):
-    avg_loss, _ = speech.eval.eval_loop(model,
-                    ldr, use_cuda=use_cuda)
+    avg_loss, _ = speech.eval.eval_loop(model, ldr)
     print("Dev Loss: {:.2f}".format(avg_loss))
     return avg_loss
 
