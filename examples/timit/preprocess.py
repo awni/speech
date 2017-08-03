@@ -15,8 +15,17 @@ from speech.utils import wave
 
 WAV_EXT = "wv" # using wv since NIST took wav
 
+def load_phone_map():
+    with open("phones.60-48-39.map", 'r') as fid:
+        lines = (l.strip().split() for l in fid)
+        lines = [l for l in lines if len(l) == 3]
+    m60_48 = {l[0] : l[1] for l in lines}
+    m48_39 = {l[1] : l[2] for l in lines}
+    return m60_48, m48_39
+
 def load_transcripts(path):
     pattern = os.path.join(path, "*/*/*.phn")
+    m60_48, _ = load_phone_map()
     files = glob.glob(pattern)
     # Standard practic is to remove all "sa" sentences
     # for each speaker since they are the same for all.
@@ -26,8 +35,8 @@ def load_transcripts(path):
     for f in files:
         with open(f) as fid:
             lines = (l.strip() for l in fid)
-            phonemes = [l.split()[-1] for l in lines]
-            phonemes = phonemes[1:-1] # get rid of start and end token
+            phonemes = (l.split()[-1] for l in lines)
+            phonemes = [m60_48[p] for p in phonemes if p in m60_48]
             data[f] = phonemes
     return data
 
