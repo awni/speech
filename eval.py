@@ -6,7 +6,6 @@ import argparse
 import editdistance
 import torch
 import tqdm
-
 import speech
 import speech.loader as loader
 
@@ -41,7 +40,7 @@ def run(model_path, dataset_json, batch_size=8):
 
     use_cuda = torch.cuda.is_available()
 
-    model, preproc = speech.load(model_path)
+    model, preproc = speech.load(model_path, tag="best")
     ldr = loader.make_loader(dataset_json,
             preproc, batch_size)
 

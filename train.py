@@ -82,14 +82,24 @@ def run(config):
     best_so_far = float("inf")
     for e in range(opt_cfg["epochs"]):
         start = time.time()
+
         run_state = run_epoch(model, optimizer, train_ldr, *run_state)
+
         msg = "Epoch {} completed in {:.2f} (s)."
         print(msg.format(e, time.time() - start))
+
         dev_loss = eval_dev(model, dev_ldr)
+
+        # Log for tensorboard
         tb.log_value("dev_loss", dev_loss, e)
+
+        speech.save(model, preproc, config["save_path"])
+
+        # Save the best model on the dev set
         if dev_loss < best_so_far:
             best_so_far = dev_loss
-            speech.save(model, preproc, config["save_path"])
+            speech.save(model, preproc,
+                    config["save_path"], tag="best")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
