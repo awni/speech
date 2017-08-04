@@ -50,14 +50,13 @@ class Preprocessor():
 
     def decode(self, seq):
         text = [self.int_to_char[s] for s in seq]
-
         if not self.start_and_end:
-            return "".join(text)
+            return text
 
         idx = 0
         while idx < len(text) and text[idx] != self.END:
             idx += 1
-        return "".join(text[:idx])
+        return text[:idx]
 
     def preprocess(self, wave_file, text):
         inputs = log_specgram_from_file(wave_file)
