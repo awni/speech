@@ -14,6 +14,11 @@ from speech.utils import data_helpers
 from speech.utils import wave
 
 WAV_EXT = "wv" # using wv since NIST took wav
+TEST_SPEAKERS = [ # Core test set from timit/readme.doc
+    'mdab0', 'mwbt0', 'felc0', 'mtas1', 'mwew0', 'fpas0',
+    'mjmp0', 'mlnt0', 'fpkt0', 'mlll0', 'mtls0', 'fjlm0',
+    'mbpm0', 'mklt0', 'fnlp0', 'mcmj0', 'mjdh0', 'fmgd0',
+    'mgrt0', 'mnjm0', 'fdhc0', 'mjln0', 'mpam0', 'fmld0']
 
 def load_phone_map():
     with open("phones.60-48-39.map", 'r') as fid:
@@ -24,7 +29,7 @@ def load_phone_map():
     return m60_48, m48_39
 
 def load_transcripts(path):
-    pattern = os.path.join(path, "*/*/*.phn")
+    pattern = os.path.join(path, "*/*/*/*.phn")
     m60_48, _ = load_phone_map()
     files = glob.glob(pattern)
     # Standard practic is to remove all "sa" sentences
@@ -40,7 +45,7 @@ def load_transcripts(path):
             data[f] = phonemes
     return data
 
-def split_by_speaker(data, dev_frac):
+def split_by_speaker(data, dev_speakers=50):
 
     def speaker_id(f):
         return os.path.basename(os.path.dirname(f))
@@ -49,12 +54,14 @@ def split_by_speaker(data, dev_frac):
     for k, v in data.items():
         speaker_dict[speaker_id(k)].append((k, v))
     speakers = speaker_dict.keys()
+    for t in TEST_SPEAKERS:
+        speakers.remove(t)
     random.shuffle(speakers)
-    cut = int(len(speakers) * dev_frac)
-    train, dev = speakers[cut:], speakers[:cut]
+    train, dev = speakers[dev_speakers:], speakers[:dev_speakers]
     train = dict(v for s in train for v in speaker_dict[s])
     dev = dict(v for s in dev for v in speaker_dict[s])
-    return train, dev
+    test = dict(v for s in TEST_SPEAKERS for v in speaker_dict[s])
+    return train, dev, test
 
 def convert_to_wav(path):
     data_helpers.convert_full_set(path, "*/*/*/*.wav",
@@ -79,24 +86,21 @@ if __name__ == "__main__":
 
     parser.add_argument("output_directory",
         help="Path where the dataset is saved.")
-    parser.add_argument("--dev_frac", default=0.12, type=float,
-        help="Fraction to hold out (by speaker) for the dev set.")
     args = parser.parse_args()
 
     path = os.path.join(args.output_directory, "timit")
     path = os.path.abspath(path)
 
     print("Converting files from NIST to standard wave format...")
-    convert_to_wav(path)
+    #convert_to_wav(path)
 
     print("Preprocessing train")
-    transcripts = load_transcripts(os.path.join(path, "train"))
-    train, dev = split_by_speaker(transcripts, dev_frac=args.dev_frac)
+    transcripts = load_transcripts(path)
+    train, dev, test = split_by_speaker(transcripts)
     build_json(train, path, "train")
 
     print("Preprocessing dev")
     build_json(dev, path, "dev")
 
     print("Preprocessing test")
-    transcripts = load_transcripts(os.path.join(path, "test"))
-    build_json(transcripts, path, "test")
+    build_json(test, path, "test")
