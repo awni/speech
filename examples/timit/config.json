@@ -1,6 +1,6 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/ctc_sub2_rnn512",
+    "save_path" : "examples/timit/models/ctc_sub2_rnn256_2",
 
     "data" : {
         "train_set" : "examples/timit/data/timit/train.json",
@@ -22,9 +22,9 @@
                 [32, 5, 32, 1]
             ],
             "rnn" : {
-                "dim" : 512,
+                "dim" : 256,
                 "bidirectional" : false,
-                "layers" : 1
+                "layers" : 2
             }
         }
     }

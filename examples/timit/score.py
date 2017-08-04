@@ -25,7 +25,7 @@ if __name__ == "__main__":
     with open(args.data_json, 'r') as fid:
         data = [json.loads(l) for l in fid]
 
-    #remap(data)
+    remap(data)
     dist = sum(editdistance.eval(d['label'], d['prediction'])
                 for d in data)
     total = sum(len(d['label']) for d in data)
