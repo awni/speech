@@ -7,7 +7,7 @@ MODEL = "model"
 PREPROC = "preproc.pyc"
 
 def get_names(path, tag):
-    tag = tag + "_" if tag else tag
+    tag = tag + "_" if tag else ""
     model = os.path.join(path, tag + MODEL)
     preproc = os.path.join(path, tag + PREPROC)
     return model, preproc
