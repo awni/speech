@@ -84,6 +84,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     path = os.path.join(args.output_directory, "timit")
+    path = os.path.abspath(path)
 
     print("Converting files from NIST to standard wave format...")
     convert_to_wav(path)

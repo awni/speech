@@ -66,6 +66,11 @@ class Model(nn.Module):
         x = x.view((b, t, f * c))
 
         x, h = self.rnn(x)
+
+        if self.rnn.bidirectional:
+            half = x.size()[-1] // 2
+            x = x[:, :, :half] + x[:, :, half:]
+
         return x
 
     def loss(self, x, y):
