@@ -11,17 +11,19 @@ from . import model
 
 class Seq2Seq(model.Model):
 
-    def __init__(self, freq_dim, output_dim, config):
+    def __init__(self, freq_dim, vocab_size, config):
         super(Seq2Seq, self).__init__(freq_dim, config)
 
         # For decoding
         rnn_dim = self.encoder_dim
-        self.embedding = nn.Embedding(output_dim, rnn_dim)
+        self.embedding = nn.Embedding(vocab_size, rnn_dim)
         self.dec_rnn = nn.GRUCell(rnn_dim, rnn_dim)
         self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
         self.attend = Attention()
-        # TODO, output_dim - 1 to not predict <s> token
-        self.fc = model.LinearND(rnn_dim, output_dim)
+
+        # *NB* we predict vocab_size - 1 classes since we
+        # never need to predict the start of sequence token.
+        self.fc = model.LinearND(rnn_dim, vocab_size - 1)
 
     def loss(self, out, batch):
         _, y = collate(*batch)

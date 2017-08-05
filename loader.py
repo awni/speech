@@ -35,9 +35,11 @@ class Preprocessor():
         self.mean, self.std = compute_mean_std(audio_files[:max_samples])
 
         # Make char map
-        chars = set(t for d in data for t in d['text'])
+        chars = list(set(t for d in data for t in d['text']))
         if start_and_end:
-            chars.update([self.END, self.START])
+            # START must be last so it can easily be
+            # excluded in the output classes of a model.
+            chars.extend([self.END, self.START])
         self.start_and_end = start_and_end
         self.int_to_char = dict(enumerate(chars))
         self.char_to_int = {v : k for k, v in self.int_to_char.items()}
@@ -70,7 +72,7 @@ class Preprocessor():
         return 161 # TODO, awni, set this automatically
 
     @property
-    def output_dim(self):
+    def vocab_size(self):
         return len(self.int_to_char)
 
 def compute_mean_std(audio_files):

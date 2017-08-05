@@ -9,20 +9,21 @@ import shared
 
 def test_model():
     freq_dim = 120
-    output_dim = 10
+    vocab_size = 10
 
     #np.random.seed(1337)
     #torch.manual_seed(1337)
 
-    model = Seq2Seq(freq_dim, output_dim, shared.model_config)
-    batch = shared.gen_fake_data(freq_dim, output_dim)
+    model = Seq2Seq(freq_dim, vocab_size + 1,
+                    shared.model_config)
+    batch = shared.gen_fake_data(freq_dim, vocab_size)
     batch_size = len(batch[0])
 
     out = model(batch)
     loss = model.loss(out, batch)
 
     assert out.size()[0] == batch_size
-    assert out.size()[2] == output_dim
+    assert out.size()[2] == vocab_size
     assert len(out.size()) == 3
 
     ## TODO, add in decode_step test when model is stable

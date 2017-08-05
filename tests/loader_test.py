@@ -9,7 +9,9 @@ def test_dataset():
     dataset = loader.AudioDataset(data_json, preproc, batch_size)
 
     # Num chars plus start and end tokens
-    assert preproc.output_dim == 11
+    assert preproc.vocab_size == 11
+    s_idx = preproc.vocab_size - 1
+    assert preproc.int_to_char[s_idx] == preproc.START
 
     inputs, targets = dataset[0]
 

@@ -10,16 +10,17 @@ import tqdm
 import speech
 import speech.loader as loader
 
-def compute_cer(labels, preds):
+def compute_cer(results):
     """
     Arguments:
-        labels (list): list of grount truth sequences.
-        preds (list): list of predicted sequences.
+        results (list): list of ground truth and
+            predicted sequence pairs.
+
     Returns the CER for the full set.
     """
     dist = sum(editdistance.eval(label, pred)
-                for label, pred in zip(labels, preds))
-    total = sum(len(label) for label in labels)
+                for label, pred in results)
+    total = sum(len(label) for label, _ in results)
     return dist / total
 
 def eval_loop(model, ldr):
@@ -33,9 +34,8 @@ def eval_loop(model, ldr):
         losses.append(loss.data[0])
         all_preds.extend(preds)
         all_labels.extend(batch[1])
-    cer = compute_cer(all_labels, all_preds)
     avg_loss = sum(losses) / len(losses)
-    return avg_loss, cer, list(zip(all_labels, all_preds))
+    return avg_loss, list(zip(all_labels, all_preds))
 
 def run(model_path, dataset_json,
         batch_size=8, tag="best",
@@ -49,15 +49,18 @@ def run(model_path, dataset_json,
 
     model.cuda() if use_cuda else model.cpu()
 
-    avg_loss, cer, results = eval_loop(model, ldr)
+    avg_loss, results = eval_loop(model, ldr)
+    results = [(preproc.decode(label), preproc.decode(pred))
+               for label, pred in results]
+    cer = compute_cer(results)
     msg = "Avg Loss: {:.2f}, CER {:.3f}"
     print(msg.format(avg_loss, cer))
 
     if out_file is not None:
         with open(out_file, 'w') as fid:
             for label, pred in results:
-                res = {'prediction' : preproc.decode(pred),
-                       'label' : preproc.decode(label)}
+                res = {'prediction' : pred,
+                       'label' : label}
                 json.dump(res, fid)
                 fid.write("\n")
 
