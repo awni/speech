@@ -2,31 +2,30 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.autograd as autograd
 
 from . import model
 
 class Seq2Seq(model.Model):
 
     def __init__(self, freq_dim, output_dim, config):
-        super(Seq2Seq, self).__init__(freq_dim, output_dim, config)
+        super(Seq2Seq, self).__init__(freq_dim, config)
 
         # For decoding
-        rnn_dim = config["rnn_dim"]
+        rnn_dim = self.encoder_dim
         self.embedding = nn.Embedding(output_dim, rnn_dim)
         self.dec_rnn = nn.GRUCell(rnn_dim, rnn_dim)
         self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
         self.attend = Attention()
         self.fc = model.LinearND(rnn_dim, output_dim)
 
-    def loss(self, batch):
-        x, y = collate(*batch)
+    def loss(self, out, batch):
+        _, y = collate(*batch)
         if self.is_cuda:
-            x = x.cuda()
             y = y.cuda()
-
-        out = self(x, y)
 
         batch_size, _, out_dim = out.size()
         out = out.view((-1, out_dim))
@@ -40,7 +39,12 @@ class Seq2Seq(model.Model):
         self.dec_rnn.bias_hh.data.squeeze_()
         self.dec_rnn.bias_ih.data.squeeze_()
 
-    def forward(self, x, y):
+    def forward(self, batch):
+        x, y = collate(*batch)
+        if self.is_cuda:
+            x = x.cuda()
+            y = y.cuda()
+
         x = self.encode(x)
         out, _ = self.decode(x, y)
         return out
@@ -59,10 +63,9 @@ class Seq2Seq(model.Model):
         for t in range(seq_len - 1):
             ix = inputs[:, t, :].squeeze(dim=1)
             sx, ax = self.attend(x, hx)
-            hx = self.dec_rnn(ix + sx, hx + sx)
-            hx = hx + sx
+            hx = self.dec_rnn(ix, hx + sx)
             aligns.append(ax)
-            out.append(hx)
+            out.append(hx + sx)
 
         out = torch.stack(out, dim=1)
         out = self.fc(out)
@@ -82,7 +85,7 @@ class Seq2Seq(model.Model):
 
         ix = self.embedding(y)
         sx, _ = self.attend(x, hx)
-        hx = self.dec_rnn(ix + sx, hx + sx)
+        hx = self.dec_rnn(ix, hx + sx)
 
         out = hx + sx
         out = self.fc(out)

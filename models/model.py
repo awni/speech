@@ -9,10 +9,9 @@ import torch.nn as nn
 
 class Model(nn.Module):
 
-    def __init__(self, freq_dim, output_dim, config):
+    def __init__(self, input_dim, config):
         super(Model, self).__init__()
-        self.freq_dim = freq_dim
-        self.output_dim = output_dim
+        self.input_dim = input_dim
 
         encoder_cfg = config["encoder"]
         conv_cfg = encoder_cfg["conv"]
@@ -26,7 +25,9 @@ class Model(nn.Module):
             in_c = out_c
 
         self.conv = nn.Sequential(*convs)
-        conv_out = out_c * self.conv_out_size(freq_dim, 1)
+        conv_out = out_c * self.conv_out_size(input_dim, 1)
+        assert conv_out > 0, \
+          "Convolutional ouptut frequency dimension is negative."
 
         rnn_cfg = encoder_cfg["rnn"]
         self.rnn = nn.GRU(input_size=conv_out,
