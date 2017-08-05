@@ -13,7 +13,7 @@ import torch.optim
 import tqdm
 
 import speech.loader as loader
-from speech.models import CTC as Model
+import speech.models as models
 import speech.eval
 
 def run_epoch(model, optimizer, train_ldr, it, avg_loss):
@@ -67,9 +67,10 @@ def run(config):
                         preproc, batch_size)
 
     # Model
-    model = Model(preproc.input_dim,
-                  preproc.output_dim,
-                  model_cfg)
+    model_class = eval("models." + model_cfg["class"])
+    model = model_class(preproc.input_dim,
+                        preproc.output_dim,
+                        model_cfg)
     model.cuda() if use_cuda else model.cpu()
 
     # Optimizer
