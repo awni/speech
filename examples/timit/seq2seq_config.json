@@ -1,0 +1,33 @@
+{
+    "seed" : 2017,
+    "save_path" : "examples/timit/models/seq2seq_test",
+
+    "data" : {
+        "train_set" : "examples/timit/data/timit/train.json",
+        "dev_set" : "examples/timit/data/timit/dev.json",
+        "start_and_end" : true
+    },
+
+    "optimizer" : {
+        "batch_size" : 8,
+        "epochs" : 100,
+        "learning_rate" : 1e-3,
+        "momentum" : 0.0
+    },
+
+    "model" : {
+        "class" : "Seq2Seq",
+        "encoder" : {
+            "conv" : [
+                [32, 5, 32, 2],
+                [32, 5, 32, 1],
+                [32, 5, 32, 1]
+            ],
+            "rnn" : {
+                "dim" : 256,
+                "bidirectional" : false,
+                "layers" : 2
+            }
+        }
+    }
+}

@@ -20,6 +20,7 @@ class Seq2Seq(model.Model):
         self.dec_rnn = nn.GRUCell(rnn_dim, rnn_dim)
         self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
         self.attend = Attention()
+        # TODO, output_dim - 1 to not predict <s> token
         self.fc = model.LinearND(rnn_dim, output_dim)
 
     def loss(self, out, batch):
@@ -72,6 +73,14 @@ class Seq2Seq(model.Model):
 
         aligns = torch.cat(aligns, dim=0)
         return out, aligns
+
+    def predict(self, probs):
+        _, argmaxs = probs.max(dim=2)
+        if argmaxs.is_cuda:
+            argmaxs = argmaxs.cpu()
+        argmaxs = argmaxs.data.numpy()
+        argmaxs = argmaxs.squeeze(axis=2)
+        return [seq.tolist() for seq in argmaxs]
 
     def decode_step(self, x, y, hx=None):
         """

@@ -49,7 +49,7 @@ class Model(nn.Module):
 
     def forward(self, batch):
         """
-        Must be overriden by subclasses.
+        Must be overridden by subclasses.
         """
         raise NotImplementedError
 
@@ -76,7 +76,13 @@ class Model(nn.Module):
 
     def loss(self, x, y):
         """
-        Must be overriden by subclasses.
+        Must be overridden by subclasses.
+        """
+        raise NotImplementedError
+
+    def predict(self, probs):
+        """
+        Must be overridden by subclasses.
         """
         raise NotImplementedError
 

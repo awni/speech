@@ -53,10 +53,11 @@ class Preprocessor():
         if not self.start_and_end:
             return text
 
-        idx = 0
-        while idx < len(text) and text[idx] != self.END:
-            idx += 1
-        return text[:idx]
+        s = text[0] == self.START
+        e = len(text)
+        if text[-1] == self.END:
+            e = text.index(self.END)
+        return text[s:e]
 
     def preprocess(self, wave_file, text):
         inputs = log_specgram_from_file(wave_file)
