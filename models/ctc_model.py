@@ -44,7 +44,6 @@ class CTC(model.Model):
         if argmaxs.is_cuda:
             argmaxs = argmaxs.cpu()
         argmaxs = argmaxs.data.numpy()
-        argmaxs = argmaxs.squeeze(axis=2)
         return [self.max_decode(seq, blank=self.blank)
                 for seq in argmaxs]
 
