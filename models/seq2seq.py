@@ -16,7 +16,7 @@ class Seq2Seq(model.Model):
 
         # For decoding
         rnn_dim = self.encoder_dim
-        embed_dim = 16
+        embed_dim = config["decoder"]["embedding_dim"]
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.dec_rnn = nn.GRUCell(embed_dim + rnn_dim, rnn_dim)
         self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
@@ -85,7 +85,6 @@ class Seq2Seq(model.Model):
         if argmaxs.is_cuda:
             argmaxs = argmaxs.cpu()
         argmaxs = argmaxs.data.numpy()
-        argmaxs = argmaxs.squeeze(axis=2)
         return [seq.tolist() for seq in argmaxs]
 
     def decode_step(self, x, y, hx=None):
