@@ -18,9 +18,13 @@ class Seq2Seq(model.Model):
         rnn_dim = self.encoder_dim
         embed_dim = config["decoder"]["embedding_dim"]
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.dec_rnn = nn.GRUCell(embed_dim + rnn_dim, rnn_dim)
-        self.h_init = nn.Parameter(data=torch.zeros(1, rnn_dim))
-        self.attend = Attention(use_cuda=self.is_cuda)
+        self.dec_rnn = nn.GRU(input_size=embed_dim,
+                              hidden_size=rnn_dim,
+                              num_layers=1,
+                              batch_first=True, dropout=False,
+                              bidirectional=False)
+
+        self.attend = Attention()
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
@@ -39,11 +43,6 @@ class Seq2Seq(model.Model):
         loss = loss / batch_size
         return loss
 
-    def cpu(self):
-        super(Model, self).cpu()
-        self.dec_rnn.bias_hh.data.squeeze_()
-        self.dec_rnn.bias_ih.data.squeeze_()
-
     def forward(self, batch):
         x, y = collate(*batch)
         if self.is_cuda:
@@ -59,22 +58,18 @@ class Seq2Seq(model.Model):
         x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
         """
-        batch_size, seq_len = y.size()
         inputs = self.embedding(y[:, :-1])
 
-        hx = self.h_init.expand(batch_size, self.h_init.size()[1])
-
         out = []; aligns = []
-        ax = None
-        for t in range(seq_len - 1):
-            ix = inputs[:, t, :].squeeze(dim=1)
-            sx, ax = self.attend(x, hx, ax)
-            ix = torch.cat([ix, sx], dim=1)
-            hx = self.dec_rnn(ix, hx)
+        ax = None; hx = None
+        for t in range(y.size()[1] - 1):
+            ix = inputs[:, t:t+1, :]
+            ox, hx = self.dec_rnn(ix, hx=hx)
+            sx, ax = self.attend(x, ox, ax)
             aligns.append(ax)
-            out.append(hx + sx)
+            out.append(ox + sx)
 
-        out = torch.stack(out, dim=1)
+        out = torch.cat(out, dim=1)
         out = self.fc(out)
 
         aligns = torch.cat(aligns, dim=0)
@@ -92,18 +87,11 @@ class Seq2Seq(model.Model):
         x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
         """
-        batch_size = x.size()[0]
-
-        if hx is None:
-            hx = self.h_init.expand(batch_size, self.h_init.size()[1])
-
         ix = self.embedding(y)
-        sx, _ = self.attend(x, hx)
-        hx = self.dec_rnn(ix, hx + sx)
-
-        out = hx + sx
-        out = self.fc(out)
-
+        ox, hx = self.dec_rnn(ix, hx=hx)
+        sx, _ = self.attend(x, ox) # TODO, have to save alis
+        out = ox + sx
+        out = self.fc(out.squeeze(dim=1))
         return out, hx
 
 def end_pad_concat(labels):
@@ -126,7 +114,7 @@ def collate(inputs, labels):
 
 class Attention(nn.Module):
 
-    def __init__(self, kernel_size=11, use_cuda=True):
+    def __init__(self, kernel_size=11):
         """
         Module which Performs a single attention step along the
         second axis of a given encoded input. The module uses
@@ -140,7 +128,7 @@ class Attention(nn.Module):
         on the previous attention vector and adds this into the
         next attention vector prior to normalization.
 
-        *NB* Computes attention differently if using cuda or cpu
+        *NB* Should compute attention differently if using cuda or cpu
         based on performance. See
         https://gist.github.com/awni/9989dd31642d42405903dec8ab91d1f0
         """
@@ -149,7 +137,6 @@ class Attention(nn.Module):
             "Kernel size should be odd for 'same' conv."
         padding = (kernel_size - 1) // 2
         self.conv = nn.Conv1d(1, 1, kernel_size, padding=padding)
-        self.use_cuda = use_cuda
 
     def forward(self, eh, dhx, ax=None):
         """
@@ -168,11 +155,7 @@ class Attention(nn.Module):
         """
         # Compute inner product of decoder slice with every
         # encoder slice.
-        dhx = dhx.unsqueeze(1)
-        if self.use_cuda:
-            pax = torch.sum(eh * dhx, dim=2)
-        else:
-            pax = torch.bmm(eh, dhx.transpose(1,2)).squeeze(dim=2)
+        pax = torch.sum(eh * dhx, dim=2)
         if ax is not None:
             ax = ax.unsqueeze(dim=1)
             ax = self.conv(ax).squeeze(dim=1)
@@ -183,8 +166,5 @@ class Attention(nn.Module):
         # Reduce the encoder state accross time weighting each
         # slice by its corresponding value in sx.
         sx = ax.unsqueeze(2)
-        if self.use_cuda:
-            sx = torch.sum(eh * ax.unsqueeze(dim=2), dim=1)
-        else:
-            sx = torch.bmm(eh.transpose(1,2), sx).squeeze(dim=2)
+        sx = torch.sum(eh * sx, dim=1, keepdim=True)
         return sx, ax

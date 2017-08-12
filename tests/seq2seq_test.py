@@ -13,9 +13,9 @@ def test_model():
 
     #np.random.seed(1337)
     #torch.manual_seed(1337)
-
-    model = Seq2Seq(freq_dim, vocab_size + 1,
-                    shared.model_config)
+    conf = shared.model_config
+    conf["decoder"] = {"embedding_dim" : 8}
+    model = Seq2Seq(freq_dim, vocab_size + 1, conf)
     batch = shared.gen_fake_data(freq_dim, vocab_size)
     batch_size = len(batch[0])
 

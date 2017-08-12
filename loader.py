@@ -69,7 +69,11 @@ class Preprocessor():
 
     @property
     def input_dim(self):
-        return 161 # TODO, awni, set this automatically
+        # TODO
+        window_size = 20 # ms
+        samp_rate = 16 # khz
+        dim = (window_size * samp_rate) // 2 + 1
+        return dim
 
     @property
     def vocab_size(self):
@@ -91,7 +95,9 @@ class AudioDataset(tud.Dataset):
         self.preproc = preproc
 
         # Sort by input length
-        data.sort(key=lambda x : x['duration'])
+        sort_fn = lambda x : (round(x['duration'], 2),
+                              len(x['text']))
+        data.sort(key=sort_fn)
         self.data = data
 
     def __len__(self):
