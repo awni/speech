@@ -15,14 +15,14 @@ class Seq2Seq(model.Model):
         super(Seq2Seq, self).__init__(freq_dim, config)
 
         # For decoding
+        decoder_cfg = config["decoder"]
         rnn_dim = self.encoder_dim
-        embed_dim = config["decoder"]["embedding_dim"]
+        embed_dim = decoder_cfg["embedding_dim"]
         self.embedding = nn.Embedding(vocab_size, embed_dim)
         self.dec_rnn = nn.GRU(input_size=embed_dim,
                               hidden_size=rnn_dim,
-                              num_layers=1,
-                              batch_first=True, dropout=False,
-                              bidirectional=False)
+                              num_layers=decoder_cfg["layers"],
+                              batch_first=True, dropout=False)
 
         self.attend = Attention()
 
@@ -31,7 +31,7 @@ class Seq2Seq(model.Model):
         self.fc = model.LinearND(rnn_dim, vocab_size - 1)
 
     def loss(self, out, batch):
-        _, y = collate(*batch)
+        _, y = self.collate(*batch)
         if self.is_cuda:
             y = y.cuda()
 
@@ -44,7 +44,7 @@ class Seq2Seq(model.Model):
         return loss
 
     def forward(self, batch):
-        x, y = collate(*batch)
+        x, y = self.collate(*batch)
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
@@ -94,6 +94,13 @@ class Seq2Seq(model.Model):
         out = self.fc(out.squeeze(dim=1))
         return out, hx
 
+    def collate(self, inputs, labels):
+        inputs = model.zero_pad_concat(inputs)
+        labels = end_pad_concat(labels)
+        inputs = autograd.Variable(torch.from_numpy(inputs))
+        labels = autograd.Variable(torch.from_numpy(labels))
+        return inputs, labels
+
 def end_pad_concat(labels):
     # Assumes last item in each example is the end token.
     batch_size = len(labels)
@@ -104,13 +111,6 @@ def end_pad_concat(labels):
     for e, l in enumerate(labels):
         cat_labels[e, :len(l)] = l
     return cat_labels
-
-def collate(inputs, labels):
-    inputs = model.zero_pad_concat(inputs)
-    labels = end_pad_concat(labels)
-    inputs = autograd.Variable(torch.from_numpy(inputs))
-    labels = autograd.Variable(torch.from_numpy(labels))
-    return inputs, labels
 
 class Attention(nn.Module):
 
