@@ -11,8 +11,9 @@ def test_model():
     freq_dim = 120
     vocab_size = 10
 
-    #np.random.seed(1337)
-    #torch.manual_seed(1337)
+    np.random.seed(1337)
+    torch.manual_seed(1337)
+
     conf = shared.model_config
     conf["decoder"] = {"embedding_dim" : 8,
                        "layers" : 2}
@@ -27,19 +28,18 @@ def test_model():
     assert out.size()[2] == vocab_size
     assert len(out.size()) == 3
 
-    ## TODO, add in decode_step test when model is stable
-    #x_enc = model.encode(x)
-    #out, aligns = model.decode(x_enc, y)
+    x, y = model.collate(*batch)
+    x_enc = model.encode(x)
 
-    #hx = None
-    #out_s = []
-    #for t in range(seq_len - 1):
-    #    ox, hx = model.decode_step(x_enc, y[:,t], hx=hx)
-    #    out_s.append(ox)
-    #out_s = torch.stack(out_s, dim=1)
-    #assert out.size() == out_s.size()
-    #assert np.allclose(out_s.data.numpy(),
-    #                   out.data.numpy(),
-    #                   rtol=1e-5,
-    #                   atol=1e-7)
+    state = None
+    out_s = []
+    for t in range(y.size()[1] - 1):
+        ox, state = model.decode_step(x_enc, y[:,t:t+1], state=state)
+        out_s.append(ox)
+    out_s = torch.stack(out_s, dim=1)
+    assert out.size() == out_s.size()
+    assert np.allclose(out_s.data.numpy(),
+                       out.data.numpy(),
+                       rtol=1e-5,
+                       atol=1e-7)
 

@@ -27,7 +27,6 @@ def eval_loop(model, ldr):
     losses = []
     all_preds = []; all_labels = []
     for batch in tqdm.tqdm(ldr):
-        # TODO, handle volatile
         probs = model(batch)
         loss = model.loss(probs, batch)
         preds = model.predict(probs)

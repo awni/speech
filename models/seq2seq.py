@@ -30,28 +30,52 @@ class Seq2Seq(model.Model):
         # never need to predict the start of sequence token.
         self.fc = model.LinearND(rnn_dim, vocab_size - 1)
 
-    def loss(self, out, batch):
-        _, y = self.collate(*batch)
+    def training_loss(self, batch, ali_weight=0):
+        x, y = self.collate(*batch)
         if self.is_cuda:
+            x = x.cuda()
             y = y.cuda()
+        out, alis = self.forward_impl(x, y)
+        return self.loss_impl(out, y, alis, ali_weight)
 
+    def loss_impl(self, out, y, alis=None, ali_weight=0):
         batch_size, _, out_dim = out.size()
         out = out.view((-1, out_dim))
         y = y[:,1:].contiguous().view(-1)
         loss = nn.functional.cross_entropy(out, y,
                 size_average=False)
         loss = loss / batch_size
+        if ali_weight != 0:
+            loss += self.align_loss(alis, ali_weight)
         return loss
 
-    def forward(self, batch):
+    def loss(self, out, batch):
+        x, y = self.collate(*batch)
+        if self.is_cuda:
+            y = y.cuda()
+        return self.loss_impl(out, y)
+
+    def align_loss(self, alis, weight):
+        loss = 0.0
+        b, o, t = alis.size()
+        diff = max(t - o, 0)
+        for i in range(o):
+            loss += torch.sum(alis[:, i, i:i+diff+1])
+        loss = o - (loss / b)
+        return weight * loss
+
+    def forward_impl(self, x, y):
+        x = self.encode(x)
+        out, alis = self.decode(x, y)
+        return out, alis
+
+    def forward(self, batch, volatile=False,
+                normalize=False):
         x, y = self.collate(*batch)
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
-
-        x = self.encode(x)
-        out, _ = self.decode(x, y)
-        return out
+        return self.forward_impl(x, y)[0]
 
     def decode(self, x, y):
         """
@@ -61,7 +85,7 @@ class Seq2Seq(model.Model):
         inputs = self.embedding(y[:, :-1])
 
         out = []; aligns = []
-        ax = None; hx = None
+        ax = None; hx = None;
         for t in range(y.size()[1] - 1):
             ix = inputs[:, t:t+1, :]
             ox, hx = self.dec_rnn(ix, hx=hx)
@@ -72,7 +96,7 @@ class Seq2Seq(model.Model):
         out = torch.cat(out, dim=1)
         out = self.fc(out)
 
-        aligns = torch.cat(aligns, dim=0)
+        aligns = torch.stack(aligns, dim=1)
         return out, aligns
 
     def predict(self, probs):
@@ -82,17 +106,22 @@ class Seq2Seq(model.Model):
         argmaxs = argmaxs.data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
-    def decode_step(self, x, y, hx=None):
+    def decode_step(self, x, y, state=None):
         """
         x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
         """
+        if state is None:
+            hx, ax = None, None
+        else:
+            hx, ax = state
+
         ix = self.embedding(y)
         ox, hx = self.dec_rnn(ix, hx=hx)
-        sx, _ = self.attend(x, ox) # TODO, have to save alis
+        sx, ax = self.attend(x, ox, ax=ax)
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
-        return out, hx
+        return out, (hx, ax)
 
     def collate(self, inputs, labels):
         inputs = model.zero_pad_concat(inputs)
