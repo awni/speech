@@ -1,10 +1,11 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/ctc_conv3",
+    "save_path" : "examples/timit/models/test",
 
     "data" : {
         "train_set" : "examples/timit/data/timit/train.json",
-        "dev_set" : "examples/timit/data/timit/dev.json"
+        "dev_set" : "examples/timit/data/timit/dev.json",
+        "start_and_end" : false
     },
 
     "optimizer" : {
@@ -15,12 +16,12 @@
     },
 
     "model" : {
-        "class" : "ctc",
+        "class" : "CTC",
         "encoder" : {
             "conv" : [
                 [32, 5, 32, 2],
-                [32, 3, 32, 1],
-                [32, 3, 32, 1]
+                [32, 5, 32, 1],
+                [32, 5, 32, 1]
             ],
             "rnn" : {
                 "dim" : 256,
