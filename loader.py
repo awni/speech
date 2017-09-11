@@ -33,6 +33,7 @@ class Preprocessor():
         audio_files = [d['audio'] for d in data]
         random.shuffle(audio_files)
         self.mean, self.std = compute_mean_std(audio_files[:max_samples])
+        self._input_dim = self.mean.shape[0]
 
         # Make char map
         chars = list(set(t for d in data for t in d['text']))
@@ -69,11 +70,7 @@ class Preprocessor():
 
     @property
     def input_dim(self):
-        # TODO
-        window_size = 20 # ms
-        samp_rate = 16 # khz
-        dim = (window_size * samp_rate) // 2 + 1
-        return dim
+        return self._input_dim
 
     @property
     def vocab_size(self):
@@ -94,10 +91,20 @@ class AudioDataset(tud.Dataset):
         data = read_data_json(data_json)
         self.preproc = preproc
 
-        # Sort by input length
-        sort_fn = lambda x : (round(x['duration'], 2),
+        bucket_diff = 4
+        max_len = max(len(x['text']) for x in data)
+        num_buckets = max_len // bucket_diff
+        buckets = [[] for _ in range(num_buckets)]
+        for d in data:
+            bid = min(len(d['text']) // bucket_diff, num_buckets - 1)
+            buckets[bid].append(d)
+
+        # Sort by input length followed by output length
+        sort_fn = lambda x : (round(x['duration'], 1),
                               len(x['text']))
-        data.sort(key=sort_fn)
+        for b in buckets:
+            b.sort(key=sort_fn)
+        data = [d for b in buckets for d in b]
         self.data = data
 
     def __len__(self):

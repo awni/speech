@@ -15,6 +15,10 @@ class CTC(model.Model):
         self.fc = model.LinearND(self.encoder_dim, output_dim)
         self.blank = output_dim - 1
 
+    def training_loss(self, batch):
+        out = self.forward(batch)
+        return self.loss(batch)
+
     def forward(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
         if self.is_cuda:

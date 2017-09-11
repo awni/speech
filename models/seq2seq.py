@@ -69,8 +69,7 @@ class Seq2Seq(model.Model):
         out, alis = self.decode(x, y)
         return out, alis
 
-    def forward(self, batch, volatile=False,
-                normalize=False):
+    def forward(self, batch):
         x, y = self.collate(*batch)
         if self.is_cuda:
             x = x.cuda()
@@ -100,6 +99,7 @@ class Seq2Seq(model.Model):
         return out, aligns
 
     def predict(self, probs):
+        # should use decode_step here.
         _, argmaxs = probs.max(dim=2)
         if argmaxs.is_cuda:
             argmaxs = argmaxs.cpu()
