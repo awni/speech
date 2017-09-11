@@ -1,6 +1,6 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/seq2seq_test",
+    "save_path" : "examples/timit/models/seq2seq",
 
     "data" : {
         "train_set" : "examples/timit/data/timit/train.json",
@@ -20,14 +20,17 @@
         "encoder" : {
             "conv" : [
                 [32, 5, 32, 2],
-                [32, 5, 32, 1],
-                [32, 5, 32, 1]
+                [32, 5, 32, 2]
             ],
             "rnn" : {
                 "dim" : 256,
-                "bidirectional" : false,
-                "layers" : 2
+                "bidirectional" : true,
+                "layers" : 4
             }
+        },
+        "decoder" : {
+            "embedding_dim" : 64,
+            "layers" : 1
         }
     }
 }
