@@ -98,14 +98,6 @@ class Seq2Seq(model.Model):
         aligns = torch.stack(aligns, dim=1)
         return out, aligns
 
-    def predict(self, probs):
-        # should use decode_step here.
-        _, argmaxs = probs.max(dim=2)
-        if argmaxs.is_cuda:
-            argmaxs = argmaxs.cpu()
-        argmaxs = argmaxs.data.numpy()
-        return [seq.tolist() for seq in argmaxs]
-
     def decode_step(self, x, y, state=None):
         """
         x should be shape (batch, time, hidden dimension)
@@ -122,6 +114,33 @@ class Seq2Seq(model.Model):
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
         return out, (hx, ax)
+
+    def infer(self, batch, max_len=100):
+        """
+        Infer a likely output. No beam search yet.
+        """
+        x, y = self.collate(*batch)
+        end_tok = y.data[0, -1] # TODO
+        if self.is_cuda:
+            x = x.cuda()
+            t = y.cuda()
+        x = self.encode(x)
+
+        # needs to be the start token, TODO
+        y = t[:, 0:1]
+        argmaxs = []
+        state = None
+        for _ in range(max_len):
+            out, state = self.decode_step(x, y, state=state)
+            y = torch.max(out, dim=1)[1]
+            y = y.unsqueeze(dim=1)
+            preds = y.cpu().data.numpy()
+            argmaxs.append(preds)
+            if np.all(preds == end_tok):
+                break
+
+        argmaxs = np.concatenate(argmaxs, axis=1)
+        return [seq.tolist() for seq in argmaxs]
 
     def collate(self, inputs, labels):
         inputs = model.zero_pad_concat(inputs)
