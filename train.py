@@ -12,9 +12,9 @@ import torch.nn as nn
 import torch.optim
 import tqdm
 
+import speech
 import speech.loader as loader
 import speech.models as models
-import speech.eval
 
 def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
@@ -46,7 +46,11 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     return it, avg_loss
 
 def eval_dev(model, ldr):
-    avg_loss, _ = speech.eval.eval_loop(model, ldr)
+    losses = []
+    for batch in tqdm.tqdm(ldr):
+        loss = model.training_loss(batch)
+        losses.append(loss.data[0])
+    avg_loss = sum(losses) / len(losses)
     print("Dev Loss: {:.2f}".format(avg_loss))
     return avg_loss
 
