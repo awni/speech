@@ -24,17 +24,12 @@ def compute_cer(results):
     return dist / total
 
 def eval_loop(model, ldr):
-    losses = []
     all_preds = []; all_labels = []
     for batch in tqdm.tqdm(ldr):
-        probs = model(batch)
-        loss = model.loss(probs, batch)
-        preds = model.predict(probs)
-        losses.append(loss.data[0])
+        preds = model.infer(batch)
         all_preds.extend(preds)
         all_labels.extend(batch[1])
-    avg_loss = sum(losses) / len(losses)
-    return avg_loss, list(zip(all_labels, all_preds))
+    return list(zip(all_labels, all_preds))
 
 def run(model_path, dataset_json,
         batch_size=8, tag="best",
@@ -48,12 +43,11 @@ def run(model_path, dataset_json,
 
     model.cuda() if use_cuda else model.cpu()
 
-    avg_loss, results = eval_loop(model, ldr)
+    results = eval_loop(model, ldr)
     results = [(preproc.decode(label), preproc.decode(pred))
                for label, pred in results]
     cer = compute_cer(results)
-    msg = "Avg Loss: {:.2f}, CER {:.3f}"
-    print(msg.format(avg_loss, cer))
+    print("CER {:.3f}".format(cer))
 
     if out_file is not None:
         with open(out_file, 'w') as fid:
