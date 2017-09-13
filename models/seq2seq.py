@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import random
 import torch
 import torch.nn as nn
 import torch.autograd as autograd
@@ -25,6 +26,8 @@ class Seq2Seq(model.Model):
                               batch_first=True, dropout=False)
 
         self.attend = Attention()
+        self.indep = False
+        self.sample_prob = 0.0
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
@@ -81,20 +84,30 @@ class Seq2Seq(model.Model):
         x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
         """
+
         inputs = self.embedding(y[:, :-1])
 
         out = []; aligns = []
-        ax = None; hx = None;
+        ax = None; hx = None; sx = None;
         for t in range(y.size()[1] - 1):
-            ix = inputs[:, t:t+1, :]
+            # scheduled sampling
+            if out and random.random() < self.sample_prob:
+                ix = torch.max(out[-1], dim=2)[1]
+                ix = self.embedding(ix)
+            else:
+                ix = inputs[:, t:t+1, :]
+
+            # Try conditional independence
+            if self.indep:
+                ix = ix * 0
+            if sx is not None:
+                ix = ix + sx
             ox, hx = self.dec_rnn(ix, hx=hx)
             sx, ax = self.attend(x, ox, ax)
             aligns.append(ax)
-            out.append(ox + sx)
+            out.append(self.fc(ox + sx))
 
         out = torch.cat(out, dim=1)
-        out = self.fc(out)
-
         aligns = torch.stack(aligns, dim=1)
         return out, aligns
 
@@ -104,16 +117,24 @@ class Seq2Seq(model.Model):
         y should be shape (batch, label sequence length)
         """
         if state is None:
-            hx, ax = None, None
+            hx, ax, sx = None, None, None
         else:
-            hx, ax = state
+            hx, ax, sx = state
 
         ix = self.embedding(y)
+        if sx is not None:
+            ix = ix + sx
         ox, hx = self.dec_rnn(ix, hx=hx)
         sx, ax = self.attend(x, ox, ax=ax)
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
-        return out, (hx, ax)
+        return out, (hx, ax, sx)
+
+    def predict(self, batch):
+        probs = self(batch)
+        argmaxs = torch.max(probs, dim=2)[1]
+        argmaxs = argmaxs.cpu().data.numpy()
+        return [seq.tolist() for seq in argmaxs]
 
     def infer(self, batch, max_len=100):
         """
@@ -130,7 +151,7 @@ class Seq2Seq(model.Model):
         y = t[:, 0:1]
         argmaxs = []
         state = None
-        for _ in range(max_len):
+        for e in range(max_len):
             out, state = self.decode_step(x, y, state=state)
             y = torch.max(out, dim=1)[1]
             y = y.unsqueeze(dim=1)
