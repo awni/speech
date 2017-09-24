@@ -136,6 +136,23 @@ class Seq2Seq(model.Model):
         argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
+    def infer_decode(self, x, y, end_tok, max_len):
+        probs = []
+        argmaxs = [y]
+        state = None
+        for e in range(max_len):
+            out, state = self.decode_step(x, y, state=state)
+            probs.append(out)
+            y = torch.max(out, dim=1)[1]
+            y = y.unsqueeze(dim=1)
+            argmaxs.append(y)
+            if torch.sum(y.data == end_tok) == y.numel():
+                break
+
+        probs = torch.cat(probs)
+        argmaxs = torch.cat(argmaxs, dim=1)
+        return probs, argmaxs
+
     def infer(self, batch, max_len=100):
         """
         Infer a likely output. No beam search yet.
@@ -149,18 +166,8 @@ class Seq2Seq(model.Model):
 
         # needs to be the start token, TODO
         y = t[:, 0:1]
-        argmaxs = []
-        state = None
-        for e in range(max_len):
-            out, state = self.decode_step(x, y, state=state)
-            y = torch.max(out, dim=1)[1]
-            y = y.unsqueeze(dim=1)
-            preds = y.cpu().data.numpy()
-            argmaxs.append(preds)
-            if np.all(preds == end_tok):
-                break
-
-        argmaxs = np.concatenate(argmaxs, axis=1)
+        _, argmaxs = self.infer_decode(x, y, end_tok, max_len)
+        argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
     def collate(self, inputs, labels):
