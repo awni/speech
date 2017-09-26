@@ -25,13 +25,18 @@ class Seq2Seq(model.Model):
                               num_layers=decoder_cfg["layers"],
                               batch_first=True, dropout=False)
 
-        self.attend = Attention()
+        self.attend = NNAttention(rnn_dim)
         self.indep = False
         self.sample_prob = 0.0
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
         self.fc = model.LinearND(rnn_dim, vocab_size - 1)
+
+        self.volatile = False
+
+    def set_volatile(self):
+        self.volatile = True
 
     def training_loss(self, batch, ali_weight=0):
         x, y = self.collate(*batch)
@@ -91,6 +96,7 @@ class Seq2Seq(model.Model):
         ax = None; hx = None; sx = None;
         for t in range(y.size()[1] - 1):
             # scheduled sampling
+            ## TODO, loss get's much worse if we sample during decoding with a trained model..
             if out and random.random() < self.sample_prob:
                 ix = torch.max(out[-1], dim=2)[1]
                 ix = self.embedding(ix)
@@ -175,6 +181,9 @@ class Seq2Seq(model.Model):
         labels = end_pad_concat(labels)
         inputs = autograd.Variable(torch.from_numpy(inputs))
         labels = autograd.Variable(torch.from_numpy(labels))
+        if self.volatile:
+            inputs.volatile = True
+            labels.volatile = True
         return inputs, labels
 
 def end_pad_concat(labels):
@@ -231,16 +240,51 @@ class Attention(nn.Module):
         """
         # Compute inner product of decoder slice with every
         # encoder slice.
-        pax = torch.sum(eh * dhx, dim=2)
+        # location attention
+        pax = eh * dhx
+        pax = torch.sum(pax, dim=2)
+
         if ax is not None:
             ax = ax.unsqueeze(dim=1)
             ax = self.conv(ax).squeeze(dim=1)
             pax = pax + ax
+
         ax = nn.functional.softmax(pax)
 
         # At this point sx should have size (batch size, time).
         # Reduce the encoder state accross time weighting each
         # slice by its corresponding value in sx.
+        sx = ax.unsqueeze(2)
+        sx = torch.sum(eh * sx, dim=1, keepdim=True)
+        return sx, ax
+
+class NNAttention(nn.Module):
+
+    def __init__(self, n_channels, kernel_size=11):
+        super(NNAttention, self).__init__()
+        assert kernel_size % 2 == 1, \
+            "Kernel size should be odd for 'same' conv."
+        padding = (kernel_size - 1) // 2
+        self.conv = nn.Conv1d(1, n_channels, kernel_size, padding=padding)
+        self.nn = nn.Sequential(
+                     nn.ReLU())
+                     model.LinearND(n_channels, 1))
+                     #nn.ReLU(),
+                     #model.LinearND(64, 1))
+
+    def forward(self, eh, dhx, ax=None):
+        # Try making attention computation more sophisticated.
+        pax = eh + dhx
+
+        if ax is not None:
+            ax = ax.unsqueeze(dim=1)
+            ax = self.conv(ax).transpose(1, 2)
+            pax = pax + ax
+
+        pax = pax.squeeze(dim=2)
+
+        ax = nn.functional.softmax(pax)
+
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
         return sx, ax
