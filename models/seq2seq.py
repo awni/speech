@@ -24,10 +24,10 @@ class Seq2Seq(model.Model):
         self.dec_rnn = nn.GRU(input_size=embed_dim,
                               hidden_size=rnn_dim,
                               num_layers=decoder_cfg["layers"],
-                              batch_first=True, dropout=False)
+                              batch_first=True, dropout=config["dropout"])
 
-        #self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
-        self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
+        self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
+        #self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
         self.sample_prob = 0.0
 
         # *NB* we predict vocab_size - 1 classes since we
@@ -92,8 +92,8 @@ class Seq2Seq(model.Model):
             else:
                 ix = inputs[:, t:t+1, :]
 
-            #if sx is not None:
-            #    ix = ix + sx
+            if sx is not None:
+                ix = ix + sx
 
             ox, hx = self.dec_rnn(ix, hx=hx)
             sx, ax = self.attend(x, ox, ax)
@@ -259,7 +259,7 @@ class ProdAttention(nn.Module):
 
     def forward(self, eh, dhx, ax=None):
         pax = eh * dhx
-        pax = .1 * torch.sum(pax, dim=2)
+        pax = torch.sum(pax, dim=2)
 
         if self.log_t:
             log_t = math.log(pax.size()[1])

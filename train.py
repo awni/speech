@@ -47,10 +47,12 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
 def eval_dev(model, ldr):
     losses = []
+    model.eval()
     for batch in tqdm.tqdm(ldr):
         loss = model.training_loss(batch)
         losses.append(loss.data[0])
     avg_loss = sum(losses) / len(losses)
+    model.train()
     print("Dev Loss: {:.2f}".format(avg_loss))
     return avg_loss
 

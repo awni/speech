@@ -22,6 +22,8 @@ class Model(nn.Module):
             conv = nn.Conv2d(in_c, out_c, (h, w),
                              stride=(s, s), padding=0)
             convs.extend([conv, nn.ReLU()])
+            if config["dropout"] != 0:
+                convs.append(nn.Dropout(p=config["dropout"]))
             in_c = out_c
 
         self.conv = nn.Sequential(*convs)
@@ -33,7 +35,7 @@ class Model(nn.Module):
         self.rnn = nn.GRU(input_size=conv_out,
                           hidden_size=rnn_cfg["dim"],
                           num_layers=rnn_cfg["layers"],
-                          batch_first=True, dropout=False,
+                          batch_first=True, dropout=config["dropout"],
                           bidirectional=rnn_cfg["bidirectional"])
         self._encoder_dim = rnn_cfg["dim"]
 

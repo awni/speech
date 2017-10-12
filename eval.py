@@ -43,6 +43,7 @@ def run(model_path, dataset_json,
 
     model.cuda() if use_cuda else model.cpu()
     model.set_volatile()
+    model.eval()
 
     results = eval_loop(model, ldr)
     results = [(preproc.decode(label), preproc.decode(pred))
