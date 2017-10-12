@@ -86,10 +86,11 @@ def compute_mean_std(audio_files):
 
 class AudioDataset(tud.Dataset):
 
-    def __init__(self, data_json, preproc, batch_size):
+    def __init__(self, data_json, preproc, batch_size, noise=False):
 
         data = read_data_json(data_json)
         self.preproc = preproc
+        self.noise = noise
 
         bucket_diff = 4
         max_len = max(len(x['text']) for x in data)
@@ -114,7 +115,13 @@ class AudioDataset(tud.Dataset):
         datum = self.data[idx]
         datum = self.preproc.preprocess(datum["audio"],
                                         datum["text"])
+        if self.noise:
+            std = random.choice(np.arange(0.0, 0.5, 0.1))
+            noise = np.random.normal(0.0, std, datum[0].shape)
+            noise = noise.astype(np.float32)
+            datum[0] += noise
         return datum
+
 
 class BatchRandomSampler(tud.sampler.Sampler):
     """
