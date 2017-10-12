@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import numpy as np
 import random
 import torch
@@ -25,8 +26,8 @@ class Seq2Seq(model.Model):
                               num_layers=decoder_cfg["layers"],
                               batch_first=True, dropout=False)
 
-        self.attend = NNAttention(rnn_dim)
-        self.indep = False
+        #self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
+        self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
         self.sample_prob = 0.0
 
         # *NB* we predict vocab_size - 1 classes since we
@@ -38,23 +39,21 @@ class Seq2Seq(model.Model):
     def set_volatile(self):
         self.volatile = True
 
-    def training_loss(self, batch, ali_weight=0):
+    def training_loss(self, batch):
         x, y = self.collate(*batch)
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
         out, alis = self.forward_impl(x, y)
-        return self.loss_impl(out, y, alis, ali_weight)
+        return self.loss_impl(out, y)
 
-    def loss_impl(self, out, y, alis=None, ali_weight=0):
+    def loss_impl(self, out, y):
         batch_size, _, out_dim = out.size()
         out = out.view((-1, out_dim))
         y = y[:,1:].contiguous().view(-1)
         loss = nn.functional.cross_entropy(out, y,
                 size_average=False)
         loss = loss / batch_size
-        if ali_weight != 0:
-            loss += self.align_loss(alis, ali_weight)
         return loss
 
     def loss(self, out, batch):
@@ -62,15 +61,6 @@ class Seq2Seq(model.Model):
         if self.is_cuda:
             y = y.cuda()
         return self.loss_impl(out, y)
-
-    def align_loss(self, alis, weight):
-        loss = 0.0
-        b, o, t = alis.size()
-        diff = max(t - o, 0)
-        for i in range(o):
-            loss += torch.sum(alis[:, i, i:i+diff+1])
-        loss = o - (loss / b)
-        return weight * loss
 
     def forward_impl(self, x, y):
         x = self.encode(x)
@@ -96,18 +86,15 @@ class Seq2Seq(model.Model):
         ax = None; hx = None; sx = None;
         for t in range(y.size()[1] - 1):
             # scheduled sampling
-            ## TODO, loss get's much worse if we sample during decoding with a trained model..
             if out and random.random() < self.sample_prob:
                 ix = torch.max(out[-1], dim=2)[1]
                 ix = self.embedding(ix)
             else:
                 ix = inputs[:, t:t+1, :]
 
-            # Try conditional independence
-            if self.indep:
-                ix = ix * 0
-            if sx is not None:
-                ix = ix + sx
+            #if sx is not None:
+            #    ix = ix + sx
+
             ox, hx = self.dec_rnn(ix, hx=hx)
             sx, ax = self.attend(x, ox, ax)
             aligns.append(ax)
@@ -165,6 +152,7 @@ class Seq2Seq(model.Model):
         """
         x, y = self.collate(*batch)
         end_tok = y.data[0, -1] # TODO
+        t = y
         if self.is_cuda:
             x = x.cuda()
             t = y.cuda()
@@ -199,7 +187,7 @@ def end_pad_concat(labels):
 
 class Attention(nn.Module):
 
-    def __init__(self, kernel_size=11):
+    def __init__(self, kernel_size=11, log_t=False):
         """
         Module which Performs a single attention step along the
         second axis of a given encoded input. The module uses
@@ -222,6 +210,7 @@ class Attention(nn.Module):
             "Kernel size should be odd for 'same' conv."
         padding = (kernel_size - 1) // 2
         self.conv = nn.Conv1d(1, 1, kernel_size, padding=padding)
+        self.log_t = log_t
 
     def forward(self, eh, dhx, ax=None):
         """
@@ -244,11 +233,15 @@ class Attention(nn.Module):
         pax = eh * dhx
         pax = torch.sum(pax, dim=2)
 
+
         if ax is not None:
             ax = ax.unsqueeze(dim=1)
             ax = self.conv(ax).squeeze(dim=1)
             pax = pax + ax
 
+        if self.log_t:
+            log_t = math.log(pax.size()[1])
+            pax = log_t * pax
         ax = nn.functional.softmax(pax)
 
         # At this point sx should have size (batch size, time).
@@ -258,19 +251,37 @@ class Attention(nn.Module):
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
         return sx, ax
 
+class ProdAttention(nn.Module):
+
+    def __init__(self, log_t=False):
+        super(ProdAttention, self).__init__()
+        self.log_t = log_t
+
+    def forward(self, eh, dhx, ax=None):
+        pax = eh * dhx
+        pax = .1 * torch.sum(pax, dim=2)
+
+        if self.log_t:
+            log_t = math.log(pax.size()[1])
+            pax = log_t * pax
+        ax = nn.functional.softmax(pax)
+
+        sx = ax.unsqueeze(2)
+        sx = torch.sum(eh * sx, dim=1, keepdim=True)
+        return sx, ax
+
 class NNAttention(nn.Module):
 
-    def __init__(self, n_channels, kernel_size=11):
+    def __init__(self, n_channels, kernel_size=15, log_t=False):
         super(NNAttention, self).__init__()
         assert kernel_size % 2 == 1, \
             "Kernel size should be odd for 'same' conv."
         padding = (kernel_size - 1) // 2
         self.conv = nn.Conv1d(1, n_channels, kernel_size, padding=padding)
         self.nn = nn.Sequential(
-                     nn.ReLU())
+                     nn.ReLU(),
                      model.LinearND(n_channels, 1))
-                     #nn.ReLU(),
-                     #model.LinearND(64, 1))
+        self.log_t = log_t
 
     def forward(self, eh, dhx, ax=None):
         # Try making attention computation more sophisticated.
@@ -281,8 +292,11 @@ class NNAttention(nn.Module):
             ax = self.conv(ax).transpose(1, 2)
             pax = pax + ax
 
+        pax = self.nn(pax)
         pax = pax.squeeze(dim=2)
-
+        if self.log_t:
+            log_t = math.log(pax.size()[1])
+            pax = log_t * pax
         ax = nn.functional.softmax(pax)
 
         sx = ax.unsqueeze(2)
