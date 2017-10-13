@@ -28,7 +28,7 @@ class Seq2Seq(model.Model):
 
         self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
         #self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
-        self.sample_prob = 0.0
+        self.sample_prob = 0.4
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
@@ -104,7 +104,7 @@ class Seq2Seq(model.Model):
         aligns = torch.stack(aligns, dim=1)
         return out, aligns
 
-    def decode_step(self, x, y, state=None):
+    def decode_step(self, x, y, state=None, softmax=False):
         """
         x should be shape (batch, time, hidden dimension)
         y should be shape (batch, label sequence length)
@@ -121,6 +121,8 @@ class Seq2Seq(model.Model):
         sx, ax = self.attend(x, ox, ax=ax)
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
+        if softmax:
+            out = nn.functional.softmax(out)
         return out, (hx, ax, sx)
 
     def predict(self, batch):
@@ -146,7 +148,7 @@ class Seq2Seq(model.Model):
         argmaxs = torch.cat(argmaxs, dim=1)
         return probs, argmaxs
 
-    def infer(self, batch, max_len=100):
+    def infer(self, batch, max_len=80):
         """
         Infer a likely output. No beam search yet.
         """
@@ -163,6 +165,48 @@ class Seq2Seq(model.Model):
         _, argmaxs = self.infer_decode(x, y, end_tok, max_len)
         argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
+
+    def beam_search(self, batch, beam_size=4, max_len=80):
+        x, y = self.collate(*batch)
+        start_tok = y.data[0, 0]
+        end_tok = y.data[0, -1] # TODO
+        if self.is_cuda:
+            x = x.cuda()
+            y = y.cuda()
+        x = self.encode(x)
+
+        y = y[:, 0:1].clone()
+
+        beam = [((start_tok,), 0, None)];
+        complete = []
+        for _ in range(max_len):
+            new_beam = []
+            for hyp, score, state in beam:
+
+                y[0] = hyp[-1]
+                out, state = self.decode_step(x, y, state=state, softmax=True)
+                out = out.cpu().data.numpy().squeeze(axis=0).tolist()
+                for i, p in enumerate(out):
+                    new_score = score + p
+                    new_hyp = hyp + (i,)
+                    new_beam.append((new_hyp, new_score, state))
+            new_beam = sorted(new_beam, key=lambda x: x[1], reverse=True)
+
+            # Remove complete hypotheses
+            for cand in new_beam[:beam_size]:
+                if cand[0][-1] == end_tok:
+                    complete.append(cand)
+            if len(complete) >= beam_size:
+                complete = complete[:beam_size]
+                break
+            beam = filter(lambda x : x[0][-1] != end_tok, new_beam)
+            beam = beam[:beam_size]
+
+        complete = sorted(complete, key=lambda x: x[1], reverse=True)
+        if len(complete) == 0:
+            complete = beam
+        hyp, score, _ = complete[0]
+        return [hyp]
 
     def collate(self, inputs, labels):
         inputs = model.zero_pad_concat(inputs)
