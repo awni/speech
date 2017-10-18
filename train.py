@@ -24,7 +24,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     for batch in tq:
         start_t = time.time()
         optimizer.zero_grad()
-        loss = model.training_loss(batch)
+        loss = model.loss(batch)
         loss.backward()
 
         grad_norm = nn.utils.clip_grad_norm(model.parameters(), 200)
@@ -45,18 +45,26 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
     return it, avg_loss
 
-def eval_dev(model, ldr):
-    losses = []
-    model.eval()
-    model.volatile = True
+def eval_dev(model, ldr, preproc):
+    losses = []; all_preds = []; all_labels = []
+
+    model.set_eval()
+
     for batch in tqdm.tqdm(ldr):
-        loss = model.training_loss(batch)
+        preds = model.infer(batch)
+        loss = model.loss(batch)
         losses.append(loss.data[0])
-    avg_loss = sum(losses) / len(losses)
-    model.train()
-    model.volatile = False
-    print("Dev Loss: {:.2f}".format(avg_loss))
-    return avg_loss
+        all_preds.extend(preds)
+        all_labels.extend(batch[1])
+
+    model.set_train()
+
+    loss = sum(losses) / len(losses)
+    results = [(preproc.decode(l), preproc.decode(p))
+               for l, p in zip(all_labels, all_preds)]
+    cer = speech.compute_cer(results)
+    print("Dev: Loss {:.3f}, CER {:.3f}".format(loss, cer))
+    return loss, cer
 
 def run(config):
 
@@ -79,6 +87,7 @@ def run(config):
                         preproc.vocab_size,
                         model_cfg)
     model.cuda() if use_cuda else model.cpu()
+    model.set_eval()
 
     # Optimizer
     optimizer = torch.optim.SGD(model.parameters(),
@@ -95,16 +104,17 @@ def run(config):
         msg = "Epoch {} completed in {:.2f} (s)."
         print(msg.format(e, time.time() - start))
 
-        dev_loss = eval_dev(model, dev_ldr)
+        dev_loss, dev_cer = eval_dev(model, dev_ldr, preproc)
 
         # Log for tensorboard
         tb.log_value("dev_loss", dev_loss, e)
+        tb.log_value("dev_cer", dev_cer, e)
 
         speech.save(model, preproc, config["save_path"])
 
         # Save the best model on the dev set
-        if dev_loss < best_so_far:
-            best_so_far = dev_loss
+        if dev_cer < best_so_far:
+            best_so_far = dev_cer
             speech.save(model, preproc,
                     config["save_path"], tag="best")
 

@@ -27,27 +27,41 @@ class Seq2Seq(model.Model):
                               batch_first=True, dropout=config["dropout"])
 
         self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
+        #self.attend = RNNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
         #self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
-        self.sample_prob = 0.4
+
+        self.sample_prob = decoder_cfg["sample_prob"]
+        self.scheduled_sampling = (self.sample_prob != 0)
+
+        self.volatile = False
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
         self.fc = model.LinearND(rnn_dim, vocab_size - 1)
 
-        self.volatile = False
+    def set_eval(self):
+        """
+        Set the model to evaluation mode.
+        """
+        self.eval()
+        model.volatile = True
+        self.scheduled_samplling = False
 
-    def set_volatile(self):
-        self.volatile = True
+    def set_train(self):
+        """
+        Set the model to training mode.
+        """
+        self.train()
+        model.volatile = False
+        self.scheduled_sampling = (self.sample_prob != 0)
 
-    def training_loss(self, batch):
+    def loss(self, batch):
         x, y = self.collate(*batch)
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
         out, alis = self.forward_impl(x, y)
-        return self.loss_impl(out, y)
 
-    def loss_impl(self, out, y):
         batch_size, _, out_dim = out.size()
         out = out.view((-1, out_dim))
         y = y[:,1:].contiguous().view(-1)
@@ -55,12 +69,6 @@ class Seq2Seq(model.Model):
                 size_average=False)
         loss = loss / batch_size
         return loss
-
-    def loss(self, out, batch):
-        x, y = self.collate(*batch)
-        if self.is_cuda:
-            y = y.cuda()
-        return self.loss_impl(out, y)
 
     def forward_impl(self, x, y):
         x = self.encode(x)
@@ -85,8 +93,8 @@ class Seq2Seq(model.Model):
         out = []; aligns = []
         ax = None; hx = None; sx = None;
         for t in range(y.size()[1] - 1):
-            # scheduled sampling
-            if out and random.random() < self.sample_prob:
+            sample = (out and self.scheduled_sampling)
+            if sample and random.random() < self.sample_prob:
                 ix = torch.max(out[-1], dim=2)[1]
                 ix = self.embedding(ix)
             else:
@@ -148,7 +156,7 @@ class Seq2Seq(model.Model):
         argmaxs = torch.cat(argmaxs, dim=1)
         return probs, argmaxs
 
-    def infer(self, batch, max_len=80):
+    def infer(self, batch, max_len=200):
         """
         Infer a likely output. No beam search yet.
         """
@@ -166,7 +174,7 @@ class Seq2Seq(model.Model):
         argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
-    def beam_search(self, batch, beam_size=4, max_len=80):
+    def beam_search(self, batch, beam_size=4, max_len=200):
         x, y = self.collate(*batch)
         start_tok = y.data[0, 0]
         end_tok = y.data[0, -1] # TODO
@@ -328,7 +336,6 @@ class NNAttention(nn.Module):
         self.log_t = log_t
 
     def forward(self, eh, dhx, ax=None):
-        # Try making attention computation more sophisticated.
         pax = eh + dhx
 
         if ax is not None:
@@ -345,4 +352,37 @@ class NNAttention(nn.Module):
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
+        return sx, ax
+
+class RNNAttention(nn.Module):
+    def __init__(self, rnn_dim, log_t):
+        super(RNNAttention, self).__init__()
+        self.rnn = nn.GRU(input_size=rnn_dim + 1,
+                          hidden_size=32, num_layers=1,
+                          batch_first=True, dropout=False,
+                          bidirectional=False)
+        self.log_t = log_t
+
+    def forward(self, eh, dhx, ax=None):
+        if ax is None:
+            ax = torch.zeros(eh.size()[0:2])
+            ax[:,0] = 1.0
+            ax = torch.autograd.Variable(ax)
+            if eh.is_cuda:
+                ax = ax.cuda()
+
+        # should be batch x time x h
+        rnn_in = torch.cat([eh + dhx, ax.unsqueeze(dim=2)], dim=2)
+        out, _ = self.rnn(rnn_in)
+        pax = torch.sum(out, dim=2)
+
+        if self.log_t:
+            log_t = math.log(pax.size()[1])
+            pax = log_t * pax
+
+        ax = nn.functional.softmax(pax)
+
+        sx = ax.unsqueeze(2)
+        sx = torch.sum(eh * ax.unsqueeze(dim=2), dim=1,
+                       keepdim=True)
         return sx, ax
