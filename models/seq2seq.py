@@ -27,8 +27,6 @@ class Seq2Seq(model.Model):
                               batch_first=True, dropout=config["dropout"])
 
         self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
-        #self.attend = RNNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
-        #self.attend = ProdAttention(log_t=decoder_cfg["log_t"])
 
         self.sample_prob = decoder_cfg["sample_prob"]
         self.scheduled_sampling = (self.sample_prob != 0)
