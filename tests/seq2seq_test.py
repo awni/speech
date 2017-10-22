@@ -15,7 +15,8 @@ def test_model():
     torch.manual_seed(1337)
 
     conf = shared.model_config
-    conf["decoder"] = {"embedding_dim" : 8,
+    rnn_dim = conf['encoder']['rnn']['dim']
+    conf["decoder"] = {"embedding_dim" : rnn_dim,
                        "layers" : 2}
     model = Seq2Seq(freq_dim, vocab_size + 1, conf)
     batch = shared.gen_fake_data(freq_dim, vocab_size)

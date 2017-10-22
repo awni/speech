@@ -116,6 +116,7 @@ class AudioDataset(tud.Dataset):
                                         datum["text"])
         return datum
 
+
 class BatchRandomSampler(tud.sampler.Sampler):
     """
     Batches the data consecutively and randomly samples

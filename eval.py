@@ -3,25 +3,11 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-import editdistance
 import json
 import torch
 import tqdm
 import speech
 import speech.loader as loader
-
-def compute_cer(results):
-    """
-    Arguments:
-        results (list): list of ground truth and
-            predicted sequence pairs.
-
-    Returns the CER for the full set.
-    """
-    dist = sum(editdistance.eval(label, pred)
-                for label, pred in results)
-    total = sum(len(label) for label, _ in results)
-    return dist / total
 
 def eval_loop(model, ldr):
     all_preds = []; all_labels = []
@@ -42,11 +28,12 @@ def run(model_path, dataset_json,
             preproc, batch_size)
 
     model.cuda() if use_cuda else model.cpu()
+    model.set_eval()
 
     results = eval_loop(model, ldr)
     results = [(preproc.decode(label), preproc.decode(pred))
                for label, pred in results]
-    cer = compute_cer(results)
+    cer = speech.compute_cer(results)
     print("CER {:.3f}".format(cer))
 
     if out_file is not None:
