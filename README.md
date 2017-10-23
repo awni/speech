@@ -42,9 +42,10 @@ source setup.sh
 Consider adding this to your `bashrc`.
 
 You can verify the install was successful by running the
-tests from the top level directory.
+tests from the `tests` directory.
 
 ```
+cd tests
 pytest
 ```
 
