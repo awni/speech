@@ -71,6 +71,7 @@ python {train, eval}.py -h
 ## Examples
 
 For examples of model configurations and datasets, visit the examples
-directory. Each example dataset should have instructions and/or scripts for downloading and preparing the data. There should also be one or more model configurations available. The results for each configuration will documented in each examples corresponding `README.md`. 
-
-
+directory. Each example dataset should have instructions and/or scripts for
+downloading and preparing the data. There should also be one or more model
+configurations available. The results for each configuration will documented in
+each examples corresponding `README.md`. 
