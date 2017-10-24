@@ -92,7 +92,7 @@ if __name__ == "__main__":
     path = os.path.abspath(path)
 
     print("Converting files from NIST to standard wave format...")
-    #convert_to_wav(path)
+    convert_to_wav(path)
 
     print("Preprocessing train")
     transcripts = load_transcripts(path)

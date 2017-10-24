@@ -1,5 +1,5 @@
 #!/bin/bash
 
-timit_path=$1/LDC93S1-TIMIT/
+timit_path=$1
 python preprocess.py $timit_path
 ln -s $timit_path data
