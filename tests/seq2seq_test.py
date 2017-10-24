@@ -23,7 +23,7 @@ def test_model():
     batch_size = len(batch[0])
 
     out = model(batch)
-    loss = model.loss(out, batch)
+    loss = model.loss(batch)
 
     assert out.size()[0] == batch_size
     assert out.size()[2] == vocab_size

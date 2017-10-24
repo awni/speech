@@ -26,9 +26,9 @@ class Seq2Seq(model.Model):
                               num_layers=decoder_cfg["layers"],
                               batch_first=True, dropout=config["dropout"])
 
-        self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
+        self.attend = NNAttention(rnn_dim, log_t=decoder_cfg.get("log_t", False))
 
-        self.sample_prob = decoder_cfg["sample_prob"]
+        self.sample_prob = decoder_cfg.get("sample_prob", 0)
         self.scheduled_sampling = (self.sample_prob != 0)
 
         self.volatile = False
