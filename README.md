@@ -51,6 +51,26 @@ pytest
 
 ## Run 
 
+To train a model run
+```
+python train.py <path_to_config>
+```
+
+After the model is done training you can evaluate it with
+
+```
+python eval.py <path_to_model> <path_to_data_json>
+```
+
+To see the available options for each script use `-h`: 
+
+```
+python {train, eval}.py -h
+```
+
 ## Examples
+
+For examples of model configurations and datasets, visit the examples
+directory.
 
 
