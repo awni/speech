@@ -21,13 +21,18 @@ class CTC(model.Model):
 
     def forward(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
+        return self.forward_impl(x)
+
+    def forward_impl(self, x):
         if self.is_cuda:
             x = x.cuda()
         x = self.encode(x)
         return self.fc(x)
 
-    def loss(self, out, batch):
+    def loss(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
+        out = self.forward_impl(x)
+
         batch_size, _, out_dim = out.size()
         loss_fn = ctc.CTCLoss()
         loss = loss_fn(out, y, x_lens, y_lens)
@@ -41,9 +46,16 @@ class CTC(model.Model):
         y_lens = torch.IntTensor([len(l) for l in labels])
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
-        return [autograd.Variable(v) for v in batch]
+        batch = [autograd.Variable(v) for v in batch]
+        if self.volatile:
+            for v in batch:
+                v.volatile = True
+        return batch
 
-    def predict(self, probs):
+    def infer(self, batch):
+        x, y, x_lens, y_lens = self.collate(*batch)
+        probs = self.forward_impl(x)
+
         _, argmaxs = probs.max(dim=2)
         if argmaxs.is_cuda:
             argmaxs = argmaxs.cpu()

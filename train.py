@@ -89,7 +89,6 @@ def run(config):
                         preproc.vocab_size,
                         model_cfg)
     model.cuda() if use_cuda else model.cpu()
-    model.set_eval()
 
     # Optimizer
     optimizer = torch.optim.SGD(model.parameters(),

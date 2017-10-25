@@ -31,8 +31,6 @@ class Seq2Seq(model.Model):
         self.sample_prob = decoder_cfg.get("sample_prob", 0)
         self.scheduled_sampling = (self.sample_prob != 0)
 
-        self.volatile = False
-
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
         self.fc = model.LinearND(rnn_dim, vocab_size - 1)
@@ -42,7 +40,7 @@ class Seq2Seq(model.Model):
         Set the model to evaluation mode.
         """
         self.eval()
-        model.volatile = True
+        self.volatile = True
         self.scheduled_samplling = False
 
     def set_train(self):
@@ -50,7 +48,7 @@ class Seq2Seq(model.Model):
         Set the model to training mode.
         """
         self.train()
-        model.volatile = False
+        self.volatile = False
         self.scheduled_sampling = (self.sample_prob != 0)
 
     def loss(self, batch):

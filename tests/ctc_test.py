@@ -20,7 +20,7 @@ def test_ctc_model():
     assert out.size()[2] == output_dim
     assert len(out.size()) == 3
 
-    loss = model.loss(out, batch)
+    loss = model.loss(batch)
     preds = model.predict(out)
     assert len(preds) == batch_size
 

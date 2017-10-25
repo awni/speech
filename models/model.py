@@ -39,6 +39,8 @@ class Model(nn.Module):
                           bidirectional=rnn_cfg["bidirectional"])
         self._encoder_dim = rnn_cfg["dim"]
 
+        self.volatile = False
+
     def conv_out_size(self, n, dim):
         for c in self.conv.children():
             if type(c) == nn.Conv2d:
@@ -82,7 +84,21 @@ class Model(nn.Module):
         """
         raise NotImplementedError
 
-    def predict(self, probs):
+    def set_eval(self):
+        """
+        Set the model to evaluation mode.
+        """
+        self.eval()
+        self.volatile = True
+
+    def set_train(self):
+        """
+        Set the model to training mode.
+        """
+        self.train()
+        self.volatile = False
+
+    def infer(self, x):
         """
         Must be overridden by subclasses.
         """
