@@ -55,9 +55,8 @@ python examples/timit/score.py predictions.json
 These are the dev and test results for the best sequence-to-sequence model with attention. The configuration can be found in
 `seq2seq_config.json`. Note this is without an external LM and with a beam size of 1. Also we don't use any speaker adaptation or sophisticated features (MFCCs). Results *should* improve with these features.
 
-Dev: 17.6 CER
-
-Test: 19.8 CER
+- Dev: 17.6 CER
+- Test: 19.8 CER
 
 ### CTC (TODO)
 
