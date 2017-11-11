@@ -41,7 +41,7 @@ class Seq2Seq(model.Model):
         """
         self.eval()
         self.volatile = True
-        self.scheduled_samplling = False
+        self.scheduled_sampling = False
 
     def set_train(self):
         """
