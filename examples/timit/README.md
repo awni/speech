@@ -52,13 +52,24 @@ python examples/timit/score.py predictions.json
 
 ### seq2seq
 
-These are the dev and test results for the best sequence-to-sequence model with attention. The configuration can be found in
-`seq2seq_config.json`. Note this is without an external LM and with a beam size of 1. Also we don't use any speaker adaptation or sophisticated features (MFCCs). Results *should* improve with these features.
+These are the dev and test results for the best sequence-to-sequence model with
+attention. The configuration can be found in `seq2seq_config.json`. Note this
+is without an external LM and with a beam size of 1. Also we don't use any
+speaker adaptation or sophisticated features (MFCCs). Results *should* improve
+with these features.
 
 - Dev: 17.6 PER
 - Test: 19.8 PER
 
-### CTC (TODO)
+### CTC
+
+These are the dev and test results for the best CTC model. The configuration
+can be found in `ctc_config.json`. Note this is without an external LM and with
+`argmax` decoding. Also we don't use any speaker adaptation or sophisticated
+features (MFCCs). Results *should* improve with these features.
+
+- Dev: 15.4 PER
+- Test: 17.6 PER
 
 [Kaldi TIMIT recipe]: https://github.com/kaldi-asr/kaldi/blob/master/egs/timit/s5/conf/phones.60-48-39.map
 [LDC93S1]: https://catalog.ldc.upenn.edu/ldc93s1

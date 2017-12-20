@@ -10,14 +10,14 @@
 
     "optimizer" : {
         "batch_size" : 8,
-        "epochs" : 100,
+        "epochs" : 200,
         "learning_rate" : 1e-3,
         "momentum" : 0.0
     },
 
     "model" : {
         "class" : "CTC",
-        "dropout" : 0,
+        "dropout" : 0.4,
         "encoder" : {
             "conv" : [
                 [32, 5, 32, 2],
