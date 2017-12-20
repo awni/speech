@@ -41,9 +41,9 @@ class CTC(model.Model):
         return loss
 
     def collate(self, inputs, labels):
-        x_lens = (i.shape[0] for i in inputs)
-        x_lens = [self.conv_out_size(i, 0) for i in x_lens]
-        x_lens = torch.IntTensor(x_lens)
+        max_t = max(i.shape[0] for i in inputs)
+        max_t = self.conv_out_size(max_t, 0)
+        x_lens = torch.IntTensor([max_t] * len(inputs))
         x = torch.FloatTensor(model.zero_pad_concat(inputs))
         y_lens = torch.IntTensor([len(l) for l in labels])
         y = torch.IntTensor([l for label in labels for l in label])
