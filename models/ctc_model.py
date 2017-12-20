@@ -68,7 +68,7 @@ class CTC(model.Model):
     @staticmethod
     def max_decode(pred, blank):
         prev = pred[0]
-        seq = [prev] if prev is not blank else []
+        seq = [prev] if prev != blank else []
         for p in pred[1:]:
             if p != blank and p != prev:
                 seq.append(p)
