@@ -12,8 +12,10 @@ from . import model
 class CTC(model.Model):
     def __init__(self, freq_dim, output_dim, config):
         super(CTC, self).__init__(freq_dim, config)
-        self.fc = model.LinearND(self.encoder_dim, output_dim)
-        self.blank = output_dim - 1
+
+        # include the blank token
+        self.blank = output_dim
+        self.fc = model.LinearND(self.encoder_dim, output_dim + 1)
 
     def training_loss(self, batch):
         out = self.forward(batch)
@@ -64,7 +66,7 @@ class CTC(model.Model):
                 for seq in argmaxs]
 
     @staticmethod
-    def max_decode(pred, blank=0):
+    def max_decode(pred, blank):
         prev = pred[0]
         seq = [prev] if prev is not blank else []
         for p in pred[1:]:
