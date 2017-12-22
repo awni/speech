@@ -76,7 +76,7 @@ class Seq2Seq(model.Model):
         if self.is_cuda:
             x = x.cuda()
             y = y.cuda()
-        return self.forward_impl(x, y)[0]
+        return self.forward_impl(x, y)
 
     def decode(self, x, y):
         """

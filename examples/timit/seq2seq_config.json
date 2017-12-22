@@ -1,6 +1,6 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/seq2seq_best",
+    "save_path" : "examples/timit/models/seq2seq_ali_save",
 
     "data" : {
         "train_set" : "examples/timit/data/timit/train.json",

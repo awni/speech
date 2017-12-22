@@ -3,7 +3,10 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import cPickle as pickle
 import json
+import os
+import numpy as np
 import random
 import time
 import torch
@@ -18,7 +21,22 @@ import speech.models as models
 # TODO, (awni) why does putting this above crash..
 import tensorboard_logger as tb
 
-def run_epoch(model, optimizer, train_ldr, it, avg_loss):
+SAVE_IDX = 1000
+
+def save_state(model, train_ldr, it, save_file):
+    model.set_eval()
+    datum = train_ldr.dataset[SAVE_IDX]
+    x, y = datum
+    res = model([[x], [y]])
+    if type(res) == tuple:
+        to_save = res[1]
+    else:
+        to_save = res
+    model.set_train()
+    to_save = to_save.cpu().data.numpy().squeeze(axis=0)
+    np.save(save_file.format(it), to_save)
+
+def run_epoch(model, optimizer, train_ldr, save_file, it, avg_loss):
 
     model_t = 0.0; data_t = 0.0
     end_t = time.time()
@@ -36,6 +54,9 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
         end_t = time.time()
         model_t += end_t - start_t
         data_t += start_t - prev_end_t
+
+        if it % 50 == 0:
+            save_state(model, train_ldr, it, save_file)
 
         exp_w = 0.99
         avg_loss = exp_w * avg_loss + (1 - exp_w) * loss.data[0]
@@ -83,6 +104,12 @@ def run(config):
     dev_ldr = loader.make_loader(data_cfg["dev_set"],
                         preproc, batch_size)
 
+    # Dump the labels here.
+    label_file = os.path.join(config["save_path"], "labels.bin")
+    save_file = os.path.join(config["save_path"], "out_{}.npy")
+    with open(label_file, 'w') as fid:
+        pickle.dump(train_ldr.dataset[SAVE_IDX][1], fid)
+
     # Model
     model_class = eval("models." + model_cfg["class"])
     model = model_class(preproc.input_dim,
@@ -100,7 +127,7 @@ def run(config):
     for e in range(opt_cfg["epochs"]):
         start = time.time()
 
-        run_state = run_epoch(model, optimizer, train_ldr, *run_state)
+        run_state = run_epoch(model, optimizer, train_ldr, save_file, *run_state)
 
         msg = "Epoch {} completed in {:.2f} (s)."
         print(msg.format(e, time.time() - start))
