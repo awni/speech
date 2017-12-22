@@ -15,11 +15,11 @@ def logsumexp(*args):
                         for a in args))
     return a_max + lsp
 
-def insert_eps(labels):
-    labels_with_eps = [0]
+def insert_eps(labels, blank):
+    labels_with_eps = [blank]
     for l in labels:
         labels_with_eps.append(l)
-        labels_with_eps.append(0)
+        labels_with_eps.append(blank)
     return labels_with_eps
 
 def log_softmax(acts):
@@ -31,14 +31,15 @@ def log_softmax(acts):
 def score(acts, labels):
     """
     Compute the CTC forward variables. Assumes
-    the blank label is 0.
+    the blank label is (acts.shape[1] - 1).
 
     Arguments:
         acts (ndarray): Output probabilites of shape (time, vocab)
         labels (list): List of label integers.
     """
     log_probs = log_softmax(acts)
-    labels_with_eps = insert_eps(labels)
+    blank = acts.shape[1] - 1
+    labels_with_eps = insert_eps(labels, blank)
 
     T = acts.shape[0]
     S = len(labels_with_eps)
@@ -57,7 +58,7 @@ def score(acts, labels):
             else:
                 score = logsumexp(grid[t-1, s], grid[t-1, s-1])
 
-            if l != 0 and s > 1 and l != labels_with_eps[s-2]:
+            if l != blank and s > 1 and l != labels_with_eps[s-2]:
                 score = logsumexp(score, grid[t-1, s-2])
             grid[t, s] = score + log_probs[t, l]
 
@@ -74,7 +75,7 @@ def score(acts, labels):
             else:
                 score = logsumexp(bgrid[t+1, s], bgrid[t+1, s+1])
 
-            if l != 0 and s < S-2 and l != labels_with_eps[s+2]:
+            if l != blank and s < S-2 and l != labels_with_eps[s+2]:
                 score = logsumexp(score, bgrid[t+1, s+2])
             bgrid[t, s] = score + log_probs[t, l]
 
@@ -83,15 +84,15 @@ def score(acts, labels):
 def align(acts, labels):
     """
     Align the labels to the input with the given probabilities.
-    Assumes the blank label is 0.
+    Assumes the blank label is (acts.shape[1] - 1).
 
     Arguments:
         acts (ndarray): Output activations of shape (time, vocab)
         labels (list): List of label integers.
     """
     log_probs = log_softmax(acts)
-
-    labels_with_eps = insert_eps(labels)
+    blank = acts.shape[1] - 1
+    labels_with_eps = insert_eps(labels, blank)
 
     T = acts.shape[0]
     S = len(labels_with_eps)
@@ -104,13 +105,13 @@ def align(acts, labels):
     for t in range(1, T):
         for s in range(S):
             l = labels_with_eps[s]
-            if grid[t-1, s] > grid[t-1, s-1]:
+            if s == 0 or grid[t-1, s] > grid[t-1, s-1]:
                 max_id = s
                 score = grid[t-1, s]
             else:
                 max_id = s - 1
                 score = grid[t-1, s-1]
-            if l != 0 and s > 1 and l != labels_with_eps[s-2] \
+            if l != blank and s > 1 and l != labels_with_eps[s-2] \
               and grid[t-1, s-2] > score:
                 max_id = s - 2
                 score = grid[t-1, s-2]
