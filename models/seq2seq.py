@@ -126,7 +126,7 @@ class Seq2Seq(model.Model):
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
         if softmax:
-            out = nn.functional.softmax(out)
+            out = nn.functional.log_softmax(out)
         return out, (hx, ax, sx)
 
     def predict(self, batch):
