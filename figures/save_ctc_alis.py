@@ -29,7 +29,4 @@ def save_alis(start_idx, end_idx):
         save_path = os.path.join(model_path, "ali_{}.npy".format(i))
         np.save(save_path, grid.astype(np.float32))
 
-save_alis(0, 1500)
-
-#import matplotlib.pyplot as plt
-#plt.imshow(grid[1::2,:], cmap="Blues")
+save_alis(0, 500)
