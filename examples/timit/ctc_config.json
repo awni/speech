@@ -1,6 +1,6 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/test",
+    "save_path" : "examples/timit/models/ctc_best",
 
     "data" : {
         "train_set" : "examples/timit/data/timit/train.json",
@@ -10,23 +10,23 @@
 
     "optimizer" : {
         "batch_size" : 8,
-        "epochs" : 100,
+        "epochs" : 200,
         "learning_rate" : 1e-3,
         "momentum" : 0.0
     },
 
     "model" : {
         "class" : "CTC",
+        "dropout" : 0.4,
         "encoder" : {
             "conv" : [
                 [32, 5, 32, 2],
-                [32, 5, 32, 1],
                 [32, 5, 32, 1]
             ],
             "rnn" : {
                 "dim" : 256,
-                "bidirectional" : false,
-                "layers" : 2
+                "bidirectional" : true,
+                "layers" : 4
             }
         }
     }

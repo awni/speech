@@ -5,7 +5,6 @@ from __future__ import print_function
 import argparse
 import json
 import random
-import tensorboard_logger as tb
 import time
 import torch
 import torch.nn as nn
@@ -15,6 +14,9 @@ import tqdm
 import speech
 import speech.loader as loader
 import speech.models as models
+
+# TODO, (awni) why does putting this above crash..
+import tensorboard_logger as tb
 
 def run_epoch(model, optimizer, train_ldr, it, avg_loss):
 
@@ -87,7 +89,6 @@ def run(config):
                         preproc.vocab_size,
                         model_cfg)
     model.cuda() if use_cuda else model.cpu()
-    model.set_eval()
 
     # Optimizer
     optimizer = torch.optim.SGD(model.parameters(),

@@ -2,6 +2,7 @@
 import numpy as np
 
 model_config = {
+    "dropout" : 0.0,
     "encoder" : {
         "conv" : [
             [32, 5, 32, 2]
@@ -11,7 +12,8 @@ model_config = {
             "bidirectional" : False,
             "layers" : 1
         }
-    }}
+    }
+}
 
 def gen_fake_data(freq_dim, output_dim, max_time=100,
                   max_seq_len=20, batch_size=4):

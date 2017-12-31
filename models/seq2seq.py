@@ -26,12 +26,10 @@ class Seq2Seq(model.Model):
                               num_layers=decoder_cfg["layers"],
                               batch_first=True, dropout=config["dropout"])
 
-        self.attend = NNAttention(rnn_dim, log_t=decoder_cfg["log_t"])
+        self.attend = NNAttention(rnn_dim, log_t=decoder_cfg.get("log_t", False))
 
-        self.sample_prob = decoder_cfg["sample_prob"]
+        self.sample_prob = decoder_cfg.get("sample_prob", 0)
         self.scheduled_sampling = (self.sample_prob != 0)
-
-        self.volatile = False
 
         # *NB* we predict vocab_size - 1 classes since we
         # never need to predict the start of sequence token.
@@ -42,15 +40,15 @@ class Seq2Seq(model.Model):
         Set the model to evaluation mode.
         """
         self.eval()
-        model.volatile = True
-        self.scheduled_samplling = False
+        self.volatile = True
+        self.scheduled_sampling = False
 
     def set_train(self):
         """
         Set the model to training mode.
         """
         self.train()
-        model.volatile = False
+        self.volatile = False
         self.scheduled_sampling = (self.sample_prob != 0)
 
     def loss(self, batch):
@@ -128,7 +126,7 @@ class Seq2Seq(model.Model):
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
         if softmax:
-            out = nn.functional.softmax(out)
+            out = nn.functional.log_softmax(out)
         return out, (hx, ax, sx)
 
     def predict(self, batch):
@@ -350,37 +348,4 @@ class NNAttention(nn.Module):
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
-        return sx, ax
-
-class RNNAttention(nn.Module):
-    def __init__(self, rnn_dim, log_t):
-        super(RNNAttention, self).__init__()
-        self.rnn = nn.GRU(input_size=rnn_dim + 1,
-                          hidden_size=32, num_layers=1,
-                          batch_first=True, dropout=False,
-                          bidirectional=False)
-        self.log_t = log_t
-
-    def forward(self, eh, dhx, ax=None):
-        if ax is None:
-            ax = torch.zeros(eh.size()[0:2])
-            ax[:,0] = 1.0
-            ax = torch.autograd.Variable(ax)
-            if eh.is_cuda:
-                ax = ax.cuda()
-
-        # should be batch x time x h
-        rnn_in = torch.cat([eh + dhx, ax.unsqueeze(dim=2)], dim=2)
-        out, _ = self.rnn(rnn_in)
-        pax = torch.sum(out, dim=2)
-
-        if self.log_t:
-            log_t = math.log(pax.size()[1])
-            pax = log_t * pax
-
-        ax = nn.functional.softmax(pax)
-
-        sx = ax.unsqueeze(2)
-        sx = torch.sum(eh * ax.unsqueeze(dim=2), dim=1,
-                       keepdim=True)
         return sx, ax
