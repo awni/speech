@@ -1,0 +1,38 @@
+{
+    "seed" : 2017,
+    "save_path" : "examples/wsj/models/nn_logt_drop0.2_sample0.4",
+
+    "data" : {
+        "train_set" : "examples/wsj/train_si284.json",
+        "dev_set" : "examples/wsj/test_dev93.json",
+        "start_and_end" : true
+    },
+
+    "optimizer" : {
+        "batch_size" : 16,
+        "epochs" : 50,
+        "learning_rate" : 1e-3,
+        "momentum" : 0.0
+    },
+
+    "model" : {
+        "class" : "Seq2Seq",
+        "dropout" : 0.2,
+        "encoder" : {
+            "conv" : [
+                [32, 5, 8, 2],
+                [32, 5, 8, 2]
+            ],
+            "rnn" : {
+                "dim" : 256,
+                "bidirectional" : true,
+                "layers" : 4
+            }
+        },
+        "decoder" : {
+            "embedding_dim" : 256,
+            "log_t" : true,
+            "layers" : 1
+        }
+    }
+}
