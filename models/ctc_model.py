@@ -17,10 +17,6 @@ class CTC(model.Model):
         self.blank = output_dim
         self.fc = model.LinearND(self.encoder_dim, output_dim + 1)
 
-    def training_loss(self, batch):
-        out = self.forward(batch)
-        return self.loss(batch)
-
     def forward(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
         return self.forward_impl(x)
@@ -35,7 +31,6 @@ class CTC(model.Model):
         x, y, x_lens, y_lens = self.collate(*batch)
         out = self.forward_impl(x)
 
-        batch_size, _, out_dim = out.size()
         loss_fn = ctc.CTCLoss()
         loss = loss_fn(out, y, x_lens, y_lens)
         return loss
