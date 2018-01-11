@@ -126,7 +126,7 @@ class Seq2Seq(model.Model):
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
         if softmax:
-            out = nn.functional.log_softmax(out)
+            out = nn.functional.log_softmax(out, dim=1)
         return out, (hx, ax, sx)
 
     def predict(self, batch):
@@ -290,7 +290,7 @@ class Attention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax,  dim=1)
 
         # At this point sx should have size (batch size, time).
         # Reduce the encoder state accross time weighting each
@@ -312,7 +312,7 @@ class ProdAttention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax, dim=1)
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
@@ -344,7 +344,7 @@ class NNAttention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax, dim=1)
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
