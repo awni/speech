@@ -17,7 +17,7 @@
 
     "model" : {
         "class" : "Seq2Seq",
-        "dropout" : 0.2,
+        "dropout" : 0.3,
         "encoder" : {
             "conv" : [
                 [8, 5, 32, 2],

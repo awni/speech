@@ -50,6 +50,10 @@ python examples/timit/score.py predictions.json
 
 ## Results
 
+*NB* for best results with all models, evaluate with a batch size of 1.
+Otherwise the scores can be slightly worse due to the fact that we pad the
+inputs to all be the same length in a given batch.
+
 ### seq2seq
 
 These are the dev and test results for the best sequence-to-sequence model with
@@ -58,8 +62,8 @@ is without an external LM and with a beam size of 1. Also we don't use any
 speaker adaptation or sophisticated features (MFCCs). Results *should* improve
 with these features.
 
-- Dev: 17.6 PER
-- Test: 19.8 PER
+- Dev: 16.8 PER
+- Test: 18.7 PER
 
 ### CTC
 
