@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.autograd as autograd
 
+import transducer.decoders as td
 import transducer.functions.transducer as transducer
 from . import model
 
@@ -89,29 +90,16 @@ class Transducer(model.Model):
                 v.volatile = True
         return batch
 
-    def infer(self, batch):
-        # Start with a version of max decoding
+    def infer(self, batch, beam_size=4):
         out = self(batch)
-        _, argmaxs = torch.max(out, dim=3)
-        argmaxs = argmaxs.cpu().data.numpy()
-        return [self.max_decode(ex) for ex in argmaxs]
-
-    def max_decode(self, maxs):
-        """
-        maxs: should be a 2D array [T, U] with the max
-        prediction at each entry.
-        """
-        T, U = maxs.shape
-        t = 0; u = 0
-        pred = []
-        while t <  T and u < U - 1:
-            p = maxs[t, u]
-            if p == self.blank:
-                t += 1
-            else:
-                pred.append(p)
-                u += 1
-        return pred
+        out = out.cpu().data.numpy()
+        preds = []
+        for e, (i, l) in enumerate(zip(*batch)):
+            T = i.shape[0]
+            U = len(l) + 1
+            lp = out[e, :T, :U, :]
+            preds.append(td.decode_static(lp, beam_size, blank=self.blank)[0])
+        return preds
 
     def label_collate(self, labels):
         # Doesn't matter what we pad the end with
