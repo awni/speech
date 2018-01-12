@@ -1,27 +1,27 @@
 {
     "seed" : 2017,
-    "save_path" : "examples/timit/models/seq2seq_ali_save",
+    "save_path" : "examples/wsj/models/nn_logt_drop0.2_sample0.4",
 
     "data" : {
-        "train_set" : "examples/timit/data/timit/train.json",
-        "dev_set" : "examples/timit/data/timit/dev.json",
+        "train_set" : "examples/wsj/data/train_si284.json",
+        "dev_set" : "examples/wsj/data/test_dev93.json",
         "start_and_end" : true
     },
 
     "optimizer" : {
-        "batch_size" : 8,
-        "epochs" : 200,
+        "batch_size" : 16,
+        "epochs" : 50,
         "learning_rate" : 1e-3,
         "momentum" : 0.0
     },
 
     "model" : {
         "class" : "Seq2Seq",
-        "dropout" : 0.3,
+        "dropout" : 0.2,
         "encoder" : {
             "conv" : [
-                [8, 5, 32, 2],
-                [8, 5, 32, 1]
+                [32, 5, 8, 2],
+                [32, 5, 8, 2]
             ],
             "rnn" : {
                 "dim" : 256,
@@ -30,7 +30,7 @@
             }
         },
         "decoder" : {
-            "sample_prob" : 0.4,
+            "sample_prob": 0.2,
             "embedding_dim" : 256,
             "log_t" : true,
             "layers" : 1

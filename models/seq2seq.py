@@ -126,7 +126,7 @@ class Seq2Seq(model.Model):
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
         if softmax:
-            out = nn.functional.softmax(out)
+            out = nn.functional.log_softmax(out, dim=1)
         return out, (hx, ax, sx)
 
     def predict(self, batch):
@@ -170,7 +170,7 @@ class Seq2Seq(model.Model):
         argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
-    def beam_search(self, batch, beam_size=4, max_len=200):
+    def beam_search(self, batch, beam_size=10, max_len=200):
         x, y = self.collate(*batch)
         start_tok = y.data[0, 0]
         end_tok = y.data[0, -1] # TODO
@@ -200,11 +200,18 @@ class Seq2Seq(model.Model):
             for cand in new_beam[:beam_size]:
                 if cand[0][-1] == end_tok:
                     complete.append(cand)
-            if len(complete) >= beam_size:
-                complete = complete[:beam_size]
-                break
+
             beam = filter(lambda x : x[0][-1] != end_tok, new_beam)
             beam = beam[:beam_size]
+
+            if len(beam) == 0:
+                break
+
+            # Stopping criteria:
+            # complete contains beam_size more probable
+            # candidates than anything left in the beam
+            if sum(c[1] > beam[0][1] for c in complete) >= beam_size:
+                break
 
         complete = sorted(complete, key=lambda x: x[1], reverse=True)
         if len(complete) == 0:
@@ -290,7 +297,7 @@ class Attention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax,  dim=1)
 
         # At this point sx should have size (batch size, time).
         # Reduce the encoder state accross time weighting each
@@ -312,7 +319,7 @@ class ProdAttention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax, dim=1)
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
@@ -344,41 +351,8 @@ class NNAttention(nn.Module):
         if self.log_t:
             log_t = math.log(pax.size()[1])
             pax = log_t * pax
-        ax = nn.functional.softmax(pax)
+        ax = nn.functional.softmax(pax, dim=1)
 
         sx = ax.unsqueeze(2)
         sx = torch.sum(eh * sx, dim=1, keepdim=True)
-        return sx, ax
-
-class RNNAttention(nn.Module):
-    def __init__(self, rnn_dim, log_t):
-        super(RNNAttention, self).__init__()
-        self.rnn = nn.GRU(input_size=rnn_dim + 1,
-                          hidden_size=32, num_layers=1,
-                          batch_first=True, dropout=False,
-                          bidirectional=False)
-        self.log_t = log_t
-
-    def forward(self, eh, dhx, ax=None):
-        if ax is None:
-            ax = torch.zeros(eh.size()[0:2])
-            ax[:,0] = 1.0
-            ax = torch.autograd.Variable(ax)
-            if eh.is_cuda:
-                ax = ax.cuda()
-
-        # should be batch x time x h
-        rnn_in = torch.cat([eh + dhx, ax.unsqueeze(dim=2)], dim=2)
-        out, _ = self.rnn(rnn_in)
-        pax = torch.sum(out, dim=2)
-
-        if self.log_t:
-            log_t = math.log(pax.size()[1])
-            pax = log_t * pax
-
-        ax = nn.functional.softmax(pax)
-
-        sx = ax.unsqueeze(2)
-        sx = torch.sum(eh * ax.unsqueeze(dim=2), dim=1,
-                       keepdim=True)
         return sx, ax
