@@ -170,7 +170,7 @@ class Seq2Seq(model.Model):
         argmaxs = argmaxs.cpu().data.numpy()
         return [seq.tolist() for seq in argmaxs]
 
-    def beam_search(self, batch, beam_size=4, max_len=200):
+    def beam_search(self, batch, beam_size=10, max_len=200):
         x, y = self.collate(*batch)
         start_tok = y.data[0, 0]
         end_tok = y.data[0, -1] # TODO
@@ -200,11 +200,18 @@ class Seq2Seq(model.Model):
             for cand in new_beam[:beam_size]:
                 if cand[0][-1] == end_tok:
                     complete.append(cand)
-            if len(complete) >= beam_size:
-                complete = complete[:beam_size]
-                break
+
             beam = filter(lambda x : x[0][-1] != end_tok, new_beam)
             beam = beam[:beam_size]
+
+            if len(beam) == 0:
+                break
+
+            # Stopping criteria:
+            # complete contains beam_size more probable
+            # candidates than anything left in the beam
+            if sum(c[1] > beam[0][1] for c in complete) >= beam_size:
+                break
 
         complete = sorted(complete, key=lambda x: x[1], reverse=True)
         if len(complete) == 0:
