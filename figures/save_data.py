@@ -16,7 +16,7 @@ char_map = {
     42: u't', 43: u'oy', 44: u'v', 45: u'y', 46: u'z', 47: u'k',
     48: '</s>', 49: '<s>'}
 
-seq2seq = True
+seq2seq = False
 model_path = "/afs/cs.stanford.edu/u/awni/scr/speech/examples/timit/models/{}_ali_save"
 if seq2seq:
     model_path = model_path.format("seq2seq")
@@ -65,7 +65,7 @@ def get_alis(idx):
     alis = [[round(a, 4) for a in ali] for ali in alis]
     return alis
 
-max_id = 30
+max_id = 300
 alis = [get_alis(i) for i in range(max_id)]
 losses = losses[:max_id * 50] # convert to list of rounded floats
 losses = [round(l, 2) for l in losses]
