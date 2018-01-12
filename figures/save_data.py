@@ -16,18 +16,15 @@ char_map = {
     42: u't', 43: u'oy', 44: u'v', 45: u'y', 46: u'z', 47: u'k',
     48: '</s>', 49: '<s>'}
 
-seq2seq = False
+model = "trans"
 model_path = "/afs/cs.stanford.edu/u/awni/scr/speech/examples/timit/models/{}_ali_save"
-if seq2seq:
-    model_path = model_path.format("seq2seq")
-else:
-    model_path = model_path.format("ctc")
+model_path = model_path.format(model)
 
 with open(os.path.join(model_path, "labels.bin"), 'r') as fid:
     labels = pickle.load(fid)
 labels = [char_map[l] for l in labels]
 
-if seq2seq:
+if model == "seq2seq":
     labels = labels[1:]
 
 def errors_from_file():
@@ -53,13 +50,13 @@ smooth = 80
 losses = np.convolve(losses, (1./smooth) * np.ones(smooth), mode="valid")
 
 def get_alis(idx):
-    if seq2seq:
+    if model == "seq2seq":
         ali_file = "out_{}.npy".format(50 * idx)
     else:
         ali_file = "ali_{}.npy".format(idx)
     file_name = os.path.join(model_path, ali_file)
     alis = np.load(file_name)
-    if not seq2seq:
+    if model == "ctc":
         alis = alis[1::2, :] # remove blanks
     alis = alis.tolist()
     alis = [[round(a, 4) for a in ali] for ali in alis]
@@ -76,10 +73,7 @@ all_data = {
     }
 
 
-if seq2seq:
-    out_file = '{}_alis.js'.format("seq2seq")
-else:
-    out_file = '{}_alis.js'.format("ctc")
+out_file = '{}_alis.js'.format(model)
 
 with open(out_file, 'w') as fid:
     json.dump(all_data, fid)

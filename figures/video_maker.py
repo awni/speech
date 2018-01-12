@@ -21,19 +21,15 @@ char_map = {
     42: u't', 43: u'oy', 44: u'v', 45: u'y', 46: u'z', 47: u'k',
     48: '</s>', 49: '<s>'}
 
-seq2seq = True
+model = "trans"
 model_path = "/afs/cs.stanford.edu/u/awni/scr/speech/examples/timit/models/{}_ali_save"
-if seq2seq:
-    model_path = model_path.format("seq2seq")
-else:
-    model_path = model_path.format("ctc")
-
+model_path = model_path.format(model)
 
 with open(os.path.join(model_path, "labels.bin"), 'r') as fid:
     labels = pickle.load(fid)
 labels = [char_map[l] for l in labels]
 
-if seq2seq:
+if model == "seq2seq":
     labels = labels[1:]
 
 def errors_from_file():
@@ -59,14 +55,14 @@ smooth = 80
 # assuming we drop the last smooth
 losses = np.convolve(losses, (1./smooth) * np.ones(smooth), mode="valid")
 
-def get_plot(idx):
-    if seq2seq:
+def get_plot(idx, max_id):
+    if model == "seq2seq":
         ali_file = "out_{}.npy".format(50 * idx)
     else:
         ali_file = "ali_{}.npy".format(idx)
     file_name = os.path.join(model_path, ali_file)
     alis = np.load(file_name)
-    if not seq2seq:
+    if model == "ctc":
         alis = alis[1::2, :] # remove blanks
     ali_ax.xaxis.tick_top()
     ali_ax.xaxis.set_label_position('top')
@@ -80,8 +76,8 @@ def get_plot(idx):
     ali_ax.tick_params(axis="y", which="both", right="off", left="off")
     ali_ax.set_ylabel("Outputs")
 
-    loss_ax.set_xlim([-100, 25100])
-    if seq2seq:
+    loss_ax.set_xlim([-100, max_id * 50 + 100])
+    if model == "seq2seq":
         loss_ax.set_ylim([20, 160])
     else:
         loss_ax.set_ylim([20, 180])
@@ -90,10 +86,10 @@ def get_plot(idx):
     loss_ax.set_ylabel("Loss")
     return [p_loss[0], p_ali]
 
-def load_plots(max_id=400):
+def load_plots(max_id=100):
     plots = []
     for i in range(0, max_id):
-        plots.append(get_plot(i))
+        plots.append(get_plot(i, max_id))
     return plots
 
 plots = load_plots()
@@ -101,9 +97,6 @@ plots = load_plots()
 ani = animation.ArtistAnimation(fig, plots, interval=100,
             repeat=False, blit=True)
 
-if seq2seq:
-    out_file = '{}_vid.mp4'.format("seq2seq")
-else:
-    out_file = '{}_vid.mp4'.format("ctc")
+out_file = '{}_vid.mp4'.format(model)
 
 ani.save(out_file, metadata={'artist':'Awni Hannun'})
