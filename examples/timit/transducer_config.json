@@ -1,0 +1,37 @@
+{
+    "seed" : 2017,
+    "save_path" : "examples/timit/models/trans_best",
+
+    "data" : {
+        "train_set" : "examples/timit/data/timit/train.json",
+        "dev_set" : "examples/timit/data/timit/dev.json",
+        "start_and_end" : false
+    },
+
+    "optimizer" : {
+        "batch_size" : 8,
+        "epochs" : 200,
+        "learning_rate" : 1e-3,
+        "momentum" : 0.0
+    },
+
+    "model" : {
+        "class" : "Transducer",
+        "dropout" : 0.5,
+        "encoder" : {
+            "conv" : [
+                [8, 5, 32, 2],
+                [8, 5, 32, 1]
+            ],
+            "rnn" : {
+                "dim" : 256,
+                "bidirectional" : true,
+                "layers" : 4
+            }
+        },
+        "decoder" : {
+            "embedding_dim" : 256,
+            "layers" : 1
+        }
+    }
+}
