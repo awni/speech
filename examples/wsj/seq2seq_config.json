@@ -3,8 +3,8 @@
     "save_path" : "examples/wsj/models/nn_logt_drop0.2_sample0.4",
 
     "data" : {
-        "train_set" : "examples/wsj/train_si284.json",
-        "dev_set" : "examples/wsj/test_dev93.json",
+        "train_set" : "examples/wsj/data/train_si284.json",
+        "dev_set" : "examples/wsj/data/test_dev93.json",
         "start_and_end" : true
     },
 
@@ -30,6 +30,7 @@
             }
         },
         "decoder" : {
+            "sample_prob": 0.2,
             "embedding_dim" : 256,
             "log_t" : true,
             "layers" : 1
