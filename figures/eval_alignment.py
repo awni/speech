@@ -10,8 +10,10 @@ import torch
 import tqdm
 
 import speech
+import speech.models as models
 import speech.loader as loader
 import speech.utils.ctc_align as ctc_align
+import transducer.ref_transduce as rt
 
 def to_sample_n(index):
     index += 4 # account for 2 layers of valid conv window size 5
@@ -46,20 +48,25 @@ def eval_loop(model, dataset):
         x, labels = dataset.preproc.preprocess(datum["audio"],
                                                datum["text"])
         res = model([[x],[labels]])
-        if type(res) == tuple:
+        if type(model) == models.Seq2Seq:
             attention = res[1].data.cpu().numpy().squeeze(axis=0)
             alignment = np.argmax(attention, axis=1).tolist()
             alignment = [(p, to_sample_n(i), to_sample_n(i))
                           for p, i in zip(labels[1:-1], alignment[:-1])]
-        else:
+        elif type(model) == models.CTC:
             probs = res.data.cpu().numpy().squeeze(axis=0)
             alignment = ctc_align.align(probs, labels)
             alignment = onset_offset(alignment)
+        elif type(model) == models.Transducer:
+            probs = res.data.cpu().numpy().squeeze(axis=0)
+            alignment = rt.align(probs, labels, probs.shape[-1] - 1)
+            alignment = [(p, to_sample_n(i), to_sample_n(i))
+                          for p, i in zip(labels, alignment)]
         alignments.append((datum["audio"], alignment))
     return alignments
 
 def run(model_path, dataset_json, out_file=None):
-    batch_size=1
+    batch_size = 1
     use_cuda = torch.cuda.is_available()
 
     model, preproc = speech.load(model_path, tag="best")
