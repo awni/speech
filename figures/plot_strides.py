@@ -2,10 +2,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-strides = [1, 2, 4, 8, 16]
+strides = [1, 2, 4, 6, 8, 12, 16]
 ctc = [15.8, 15.4, 16.0]
-seq2seq = [17.8, 17.5, 18.1, 24.4, 40.0]
-transducer = [16.5, 16.9, 19.5, 26.4, 36.8]
+seq2seq = [17.8, 17.5, 18.1, 22.4, 24.4, 31.9, 40.0]
+transducer = [16.5, 16.9, 19.5, 22.7, 26.4, 33.6, 36.8]
 
 plt.figure(figsize=(10,5))
 l1, = plt.plot(strides[:len(ctc)], ctc, color="#4682B4", linewidth=1.5)
