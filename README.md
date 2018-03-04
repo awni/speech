@@ -1,8 +1,9 @@
 # speech
 
 Speech is an open-source package to build end-to-end models for automatic
-speech recognition. Sequence-to-sequence models with attention and
-connectionist temporal classification are currently supported.
+speech recognition. Sequence-to-sequence models with attention,
+Connectionist Temporal Classification and the RNN Sequence Transducer
+are currently supported.
 
 The goal of this software is to facilitate research in end-to-end models for
 speech recognition. The models are implemented in PyTorch.
@@ -74,4 +75,4 @@ For examples of model configurations and datasets, visit the examples
 directory. Each example dataset should have instructions and/or scripts for
 downloading and preparing the data. There should also be one or more model
 configurations available. The results for each configuration will documented in
-each examples corresponding `README.md`. 
+each examples corresponding `README.md`.

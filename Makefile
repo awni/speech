@@ -8,6 +8,6 @@ warp:
 
 # TODO, awni, put this into a package
 transduce:
-	git clone git@github.com:awni/transducer.git libs/transducer
+	git clone https://github.com/awni/transducer.git libs/transducer
 	cd libs/transducer; python build.py
 
