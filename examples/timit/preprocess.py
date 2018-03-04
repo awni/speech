@@ -29,7 +29,7 @@ def load_phone_map():
     return m60_48, m48_39
 
 def load_transcripts(path):
-    pattern = os.path.join(path, "*/*/*/*.phn")
+    pattern = os.path.join(path, "*/*/*.phn")
     m60_48, _ = load_phone_map()
     files = glob.glob(pattern)
     # Standard practic is to remove all "sa" sentences
@@ -57,11 +57,10 @@ def split_by_speaker(data, dev_speakers=50):
     for t in TEST_SPEAKERS:
         speakers.remove(t)
     random.shuffle(speakers)
-    train, dev = speakers[dev_speakers:], speakers[:dev_speakers]
-    train = dict(v for s in train for v in speaker_dict[s])
+    dev = speakers[:dev_speakers]
     dev = dict(v for s in dev for v in speaker_dict[s])
     test = dict(v for s in TEST_SPEAKERS for v in speaker_dict[s])
-    return train, dev, test
+    return dev, test
 
 def convert_to_wav(path):
     data_helpers.convert_full_set(path, "*/*/*/*.wav",
@@ -95,11 +94,12 @@ if __name__ == "__main__":
     convert_to_wav(path)
 
     print("Preprocessing train")
-    transcripts = load_transcripts(path)
-    train, dev, test = split_by_speaker(transcripts)
+    train = load_transcripts(os.path.join(path, "train"))
     build_json(train, path, "train")
 
     print("Preprocessing dev")
+    transcripts = load_transcripts(os.path.join(path, "test"))
+    dev, test = split_by_speaker(transcripts)
     build_json(dev, path, "dev")
 
     print("Preprocessing test")
