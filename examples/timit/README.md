@@ -18,9 +18,9 @@ location. You'll need write access to directory where timit is stored. It will
 then symlink the timit directory to `./data`. There should be three data json
 files in `data/timit`:
 
-- `train.json`: 4448 utterances
-- `dev.json`: 192 utterances from 50 held-out speakers
-- `test.json`: 400 utterances, the standard TIMIT test set
+- `train.json`: 3696 utterances from 462 speakers
+- `dev.json`: 400 utterances from 50 held-out speakers
+- `test.json`: 192 utterances from 24 speakers, the standard TIMIT test set
 
 ## Train 
 
@@ -49,6 +49,9 @@ python examples/timit/score.py predictions.json
 ```
 
 ## Results
+
+TODO, awni, results are from an earlier version of the training set. Need to
+update the results for the 462 speaker training set.
 
 *NB* for best results with all models, evaluate with a batch size of 1.
 Otherwise the scores can be slightly worse due to the fact that we pad the
