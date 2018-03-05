@@ -82,7 +82,7 @@ features (MFCCs). Results *should* improve with these features.
 
 | Paper | Test PER | Model | Features | Notes|
 |---|---|---|---|---|
-| [Speech Recognition with Deep Recurrent Neural Networks](https://arxiv.org/abs/1303.5778) | 17.7 | Transducer | MFCC + deltas | 3-layer bidirectional LSTM, beam search decoder, no external LM |
+| [Speech Recognition with Deep Recurrent Neural Networks](https://arxiv.org/abs/1303.5778) | 17.7 | Transducer | MFCC + deltas | 3-layer bidirectional LSTM, beam search decoder, no external LM, pretrained CTC encoder  |
 | [Attention-Based Models for Speech Recognition](https://arxiv.org/abs/1506.07503) | 17.6 | Seq2seq | MFCC + deltas | 3-layer bidirectional GRU, beam search decoder, no external LM |
 
 [Kaldi TIMIT recipe]: https://github.com/kaldi-asr/kaldi/blob/master/egs/timit/s5/conf/phones.60-48-39.map
