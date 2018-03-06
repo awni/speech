@@ -8,6 +8,7 @@ import torch.autograd as autograd
 
 import functions.ctc as ctc
 from . import model
+from .ctc_decoder import decode
 
 class CTC(model.Model):
     def __init__(self, freq_dim, output_dim, config):
@@ -21,11 +22,14 @@ class CTC(model.Model):
         x, y, x_lens, y_lens = self.collate(*batch)
         return self.forward_impl(x)
 
-    def forward_impl(self, x):
+    def forward_impl(self, x, softmax=False):
         if self.is_cuda:
             x = x.cuda()
         x = self.encode(x)
-        return self.fc(x)
+        x = self.fc(x)
+        if softmax:
+            return torch.nn.functional.softmax(x, dim=2)
+        return x
 
     def loss(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
@@ -51,14 +55,10 @@ class CTC(model.Model):
 
     def infer(self, batch):
         x, y, x_lens, y_lens = self.collate(*batch)
-        probs = self.forward_impl(x)
-
-        _, argmaxs = probs.max(dim=2)
-        if argmaxs.is_cuda:
-            argmaxs = argmaxs.cpu()
-        argmaxs = argmaxs.data.numpy()
-        return [self.max_decode(seq, blank=self.blank)
-                for seq in argmaxs]
+        probs = self.forward_impl(x, softmax=True)
+        probs = probs.data.cpu().numpy()
+        return [decode(p, beam_size=1, blank=self.blank)[0]
+                    for p in probs]
 
     @staticmethod
     def max_decode(pred, blank):
