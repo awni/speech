@@ -39,7 +39,7 @@ python train.py examples/timit/seq2seq_config.json
 Save the 48 phoneme predictions with the top-level `eval.py` script.
 
 ```
-python eval.py <path_to_model> examples/timit/data/timit/text.json --save predictions.json
+python eval.py <path_to_model> examples/timit/data/timit/test.json --save predictions.json
 ```
 
 To score using the reduced phoneme set (39 phonemes) run 
