@@ -20,8 +20,11 @@ def save(model, preproc, path, tag=""):
 
 def load(path, tag=""):
     model_n, preproc_n = get_names(path, tag)
-    model = torch.load(model_n)
-    with open(preproc_n, 'r') as fid:
+    model = torch.load(model_n) if \
+        torch.cuda.is_available() else \
+        torch.load(model_n, map_location=lambda storage, loc: storage)
+
+    with open(preproc_n, 'rb') as fid:
         preproc = pickle.load(fid)
     return model, preproc
 

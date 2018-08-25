@@ -5,7 +5,7 @@ from __future__ import print_function
 import argparse
 import os
 import tarfile
-import urllib.request
+import urllib
 
 EXT = ".tar.gz"
 FILES = ["raw-metadata", "train-clean-100", "dev-clean"]
@@ -17,7 +17,7 @@ def download_and_extract(in_file, out_dir):
     out_file = os.path.join(out_dir, in_file)
 
     # Download and extract zip file.
-    urllib.request.urlretrieve(file_url, filename=out_file)
+    urllib.urlretrieve(file_url, filename=out_file)
     with tarfile.open(out_file) as tf:
         tf.extractall(path=out_dir)
 

@@ -15,13 +15,24 @@
     },
 
     "model" : {
+        "class" : "CTC",
+        "dropout" : 0.4,
         "encoder" : {
+            "conv" : [
+                [32, 5, 32, 2],
+                [32, 5, 32, 1]
+            ],
             "rnn" : {
                 "dim" : 256,
-                "layers" : 1
+                "bidirectional" : true,
+                "layers" : 4
             }
-        },
-        "decoder" : {
         }
+    },
+
+    "lang_model" : {
+        "path" : "librispeech-lm-5gram-prune01111.trie.klm",
+        "alpha" : 1.85,
+        "beta" : 0.23
     }
 }

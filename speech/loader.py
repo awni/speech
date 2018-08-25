@@ -76,6 +76,10 @@ class Preprocessor():
     def vocab_size(self):
         return len(self.int_to_char)
 
+    @property
+    def space(self):
+        return self.char_to_int.get(' ')
+
 def compute_mean_std(audio_files):
     samples = [log_specgram_from_file(af)
                for af in audio_files]

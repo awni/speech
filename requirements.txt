@@ -10,3 +10,4 @@ scipy==0.18.1
 six==1.11.0
 tensorboard-logger==0.0.4
 tqdm==4.19.4
+https://github.com/kpu/kenlm/archive/master.zip
