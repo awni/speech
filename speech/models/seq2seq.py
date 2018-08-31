@@ -21,10 +21,8 @@ class Seq2Seq(model.Model):
         rnn_dim = self.encoder_dim
         embed_dim = decoder_cfg["embedding_dim"]
         self.embedding = nn.Embedding(vocab_size, embed_dim)
-        self.dec_rnn = nn.GRU(input_size=embed_dim,
-                              hidden_size=rnn_dim,
-                              num_layers=decoder_cfg["layers"],
-                              batch_first=True, dropout=config["dropout"])
+        self.dec_rnn = nn.GRUCell(input_size=embed_dim,
+                                  hidden_size=rnn_dim)
 
         self.attend = NNAttention(rnn_dim, log_t=decoder_cfg.get("log_t", False))
 
@@ -57,7 +55,6 @@ class Seq2Seq(model.Model):
             x = x.cuda()
             y = y.cuda()
         out, alis = self.forward_impl(x, y)
-
         batch_size, _, out_dim = out.size()
         out = out.view((-1, out_dim))
         y = y[:,1:].contiguous().view(-1)
@@ -87,7 +84,11 @@ class Seq2Seq(model.Model):
         inputs = self.embedding(y[:, :-1])
 
         out = []; aligns = []
-        ax = None; hx = None; sx = None;
+
+        # TODO, awni, get rid of this on next pytorch update
+        hx = autograd.Variable(torch.zeros(x.shape[0], x.shape[2]), requires_grad=False).cuda()
+
+        ax = None; sx = None;
         for t in range(y.size()[1] - 1):
             sample = (out and self.scheduled_sampling)
             if sample and random.random() < self.sample_prob:
@@ -99,7 +100,9 @@ class Seq2Seq(model.Model):
             if sx is not None:
                 ix = ix + sx
 
-            ox, hx = self.dec_rnn(ix, hx=hx)
+            hx = self.dec_rnn(ix.squeeze(dim=1), hx)
+            ox = hx.unsqueeze(dim=1)
+
             sx, ax = self.attend(x, ox, ax)
             aligns.append(ax)
             out.append(self.fc(ox + sx))
@@ -114,14 +117,17 @@ class Seq2Seq(model.Model):
         y should be shape (batch, label sequence length)
         """
         if state is None:
-            hx, ax, sx = None, None, None
+            ax, sx = None, None
+            # TODO, awni, get rid of this on next pytorch update
+            hx = autograd.Variable(torch.zeros(x.shape[0], x.shape[2]), requires_grad=False).cuda()
         else:
             hx, ax, sx = state
 
         ix = self.embedding(y)
         if sx is not None:
             ix = ix + sx
-        ox, hx = self.dec_rnn(ix, hx=hx)
+        hx = self.dec_rnn(ix.squeeze(dim=1), hx=hx)
+        ox = hx.unsqueeze(dim=1)
         sx, ax = self.attend(x, ox, ax=ax)
         out = ox + sx
         out = self.fc(out.squeeze(dim=1))
@@ -308,17 +314,13 @@ class Attention(nn.Module):
 
 class ProdAttention(nn.Module):
 
-    def __init__(self, log_t=False):
+    def __init__(self):
         super(ProdAttention, self).__init__()
-        self.log_t = log_t
 
     def forward(self, eh, dhx, ax=None):
         pax = eh * dhx
         pax = torch.sum(pax, dim=2)
 
-        if self.log_t:
-            log_t = math.log(pax.size()[1])
-            pax = log_t * pax
         ax = nn.functional.softmax(pax, dim=1)
 
         sx = ax.unsqueeze(2)
@@ -340,7 +342,6 @@ class NNAttention(nn.Module):
 
     def forward(self, eh, dhx, ax=None):
         pax = eh + dhx
-
         if ax is not None:
             ax = ax.unsqueeze(dim=1)
             ax = self.conv(ax).transpose(1, 2)
