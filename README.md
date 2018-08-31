@@ -8,8 +8,9 @@ are currently supported.
 The goal of this software is to facilitate research in end-to-end models for
 speech recognition. The models are implemented in PyTorch.
 
-The software has only been tested in Python2.7, though we plan to support both
-2.7 and 3.5.
+The software has only been tested in Python3.6. 
+
+**We will not be providing backward compatability for Python2.7.**
 
 ## Install
 
