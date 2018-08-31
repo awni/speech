@@ -3,19 +3,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import wave
+import soundfile
 
 def array_from_wave(file_name):
-    wv = wave.open(file_name, 'r')
-    audio = np.frombuffer(wv.readframes(-1), dtype=np.int16)
-    samp_rate = wv.getframerate()
-    wv.close()
+    audio, samp_rate = soundfile.read(file_name)
     return audio, samp_rate
 
 def wav_duration(file_name):
-    wv = wave.open(file_name, 'r')
-    nframes = wv.getnframes()
-    samp_rate = wv.getframerate()
+    audio, samp_rate = soundfile.read(file_name)
+    nframes = audio.shape[0]
     duration = nframes / samp_rate
-    wv.close()
     return duration

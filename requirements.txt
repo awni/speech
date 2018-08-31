@@ -8,5 +8,6 @@ pytest==3.2.3
 PyYAML==3.12
 scipy==0.18.1
 six==1.11.0
+SoundFile==0.10.2
 tensorboard-logger==0.0.4
 tqdm==4.19.4

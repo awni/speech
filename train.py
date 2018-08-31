@@ -30,6 +30,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
         loss.backward()
 
         grad_norm = nn.utils.clip_grad_norm(model.parameters(), 200)
+        loss = loss.data[0]
 
         optimizer.step()
         prev_end_t = end_t
@@ -38,9 +39,9 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
         data_t += start_t - prev_end_t
 
         exp_w = 0.99
-        avg_loss = exp_w * avg_loss + (1 - exp_w) * loss.data[0]
-        tb.log_value('train_loss', loss.data[0], it)
-        tq.set_postfix(iter=it, loss=loss.data[0],
+        avg_loss = exp_w * avg_loss + (1 - exp_w) * loss
+        tb.log_value('train_loss', loss, it)
+        tq.set_postfix(iter=it, loss=loss,
                 avg_loss=avg_loss, grad_norm=grad_norm,
                 model_time=model_t, data_time=data_t)
         it += 1
