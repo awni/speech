@@ -1,6 +1,6 @@
 
 import os
-import cPickle as pickle
+import pickle
 import torch
 
 MODEL = "model"
@@ -15,13 +15,13 @@ def get_names(path, tag):
 def save(model, preproc, path, tag=""):
     model_n, preproc_n = get_names(path, tag)
     torch.save(model, model_n)
-    with open(preproc_n, 'w') as fid:
+    with open(preproc_n, 'wb') as fid:
         pickle.dump(preproc, fid)
 
 def load(path, tag=""):
     model_n, preproc_n = get_names(path, tag)
     model = torch.load(model_n)
-    with open(preproc_n, 'r') as fid:
+    with open(preproc_n, 'rb') as fid:
         preproc = pickle.load(fid)
     return model, preproc
 

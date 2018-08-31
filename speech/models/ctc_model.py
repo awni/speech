@@ -12,7 +12,7 @@ from .ctc_decoder import decode
 
 class CTC(model.Model):
     def __init__(self, freq_dim, output_dim, config):
-        super(CTC, self).__init__(freq_dim, config)
+        super().__init__(freq_dim, config)
 
         # include the blank token
         self.blank = output_dim

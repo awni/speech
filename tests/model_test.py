@@ -29,4 +29,3 @@ def test_model():
     if torch.cuda.is_available():
         model.cuda()
         assert model.is_cuda
-

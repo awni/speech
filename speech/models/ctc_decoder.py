@@ -122,5 +122,5 @@ if __name__ == "__main__":
     probs = probs / np.sum(probs, axis=1, keepdims=True)
 
     labels, score = decode(probs)
-    print labels, score
+    print(labels)
     print("Score {:.3f}".format(score))

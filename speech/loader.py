@@ -155,8 +155,8 @@ def log_specgram_from_file(audio_file):
 
 def log_specgram(audio, sample_rate, window_size=20,
                  step_size=10, eps=1e-10):
-    nperseg = window_size * sample_rate / 1e3
-    noverlap = step_size * sample_rate / 1e3
+    nperseg = int(window_size * sample_rate / 1e3)
+    noverlap = int(step_size * sample_rate / 1e3)
     _, _, spec = scipy.signal.spectrogram(audio,
                     fs=sample_rate,
                     window='hann',

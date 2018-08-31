@@ -10,7 +10,7 @@ import torch.nn as nn
 class Model(nn.Module):
 
     def __init__(self, input_dim, config):
-        super(Model, self).__init__()
+        super().__init__()
         self.input_dim = input_dim
 
         encoder_cfg = config["encoder"]
@@ -106,7 +106,7 @@ class Model(nn.Module):
 
     @property
     def is_cuda(self):
-        return self.parameters().next().is_cuda
+        return list(self.parameters())[0].is_cuda
 
     @property
     def encoder_dim(self):
@@ -125,7 +125,7 @@ class LinearND(nn.Module):
 
     def forward(self, x):
         size = x.size()
-        n = np.prod(size[:-1])
+        n = int(np.prod(size[:-1]))
         out = x.contiguous().view(n, size[-1])
         out = self.fc(out)
         size = list(size)

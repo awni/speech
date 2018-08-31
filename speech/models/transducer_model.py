@@ -13,7 +13,7 @@ from . import model
 
 class Transducer(model.Model):
     def __init__(self, freq_dim, vocab_size, config):
-        super(Transducer, self).__init__(freq_dim, config)
+        super().__init__(freq_dim, config)
 
         # For decoding
         decoder_cfg = config["decoder"]

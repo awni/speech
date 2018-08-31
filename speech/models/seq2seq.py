@@ -14,7 +14,7 @@ from . import model
 class Seq2Seq(model.Model):
 
     def __init__(self, freq_dim, vocab_size, config):
-        super(Seq2Seq, self).__init__(freq_dim, config)
+        super().__init__(freq_dim, config)
 
         # For decoding
         decoder_cfg = config["decoder"]
@@ -85,9 +85,9 @@ class Seq2Seq(model.Model):
 
         out = []; aligns = []
 
-        # TODO, awni, get rid of this on next pytorch update
-        hx = autograd.Variable(torch.zeros(x.shape[0], x.shape[2]), requires_grad=False).cuda()
-
+        hx = torch.zeros((x.shape[0], x.shape[2]), requires_grad=False)
+        if self.is_cuda:
+            hx.cuda()
         ax = None; sx = None;
         for t in range(y.size()[1] - 1):
             sample = (out and self.scheduled_sampling)
@@ -117,9 +117,10 @@ class Seq2Seq(model.Model):
         y should be shape (batch, label sequence length)
         """
         if state is None:
-            ax, sx = None, None
-            # TODO, awni, get rid of this on next pytorch update
-            hx = autograd.Variable(torch.zeros(x.shape[0], x.shape[2]), requires_grad=False).cuda()
+            hx = torch.zeros((x.shape[0], x.shape[2]), requires_grad=False)
+            if self.is_cuda:
+                hx.cuda()
+            ax = None; sx = None;
         else:
             hx, ax, sx = state
 
