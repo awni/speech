@@ -60,7 +60,7 @@ class Transducer(model.Model):
 
         # preprend zeros
         b, t, h = y.shape
-        start = autograd.Variable(torch.zeros((b, 1, h)))
+        start = torch.zeros((b, 1, h))
         if self.is_cuda:
             start = start.cuda()
         y = torch.cat([start, y], dim=1)
@@ -84,7 +84,6 @@ class Transducer(model.Model):
         y_lens = torch.IntTensor([len(l) for l in labels])
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
-        batch = [autograd.Variable(v) for v in batch]
         if self.volatile:
             for v in batch:
                 v.volatile = True
@@ -111,7 +110,7 @@ class Transducer(model.Model):
                         fill_value=end_tok, dtype=np.int64)
         for e, l in enumerate(labels):
             cat_labels[e, :len(l)] = l
-        labels = autograd.Variable(torch.LongTensor(cat_labels))
+        labels = torch.LongTensor(cat_labels)
         if self.volatile:
             labels.volatile = True
         return labels

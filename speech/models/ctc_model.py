@@ -47,7 +47,6 @@ class CTC(model.Model):
         y_lens = torch.IntTensor([len(l) for l in labels])
         y = torch.IntTensor([l for label in labels for l in label])
         batch = [x, y, x_lens, y_lens]
-        batch = [autograd.Variable(v) for v in batch]
         if self.volatile:
             for v in batch:
                 v.volatile = True

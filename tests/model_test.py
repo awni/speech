@@ -1,7 +1,6 @@
 
 import numpy as np
 import torch
-import torch.autograd as autograd
 
 import speech.models
 
@@ -15,7 +14,6 @@ def test_model():
     model = speech.models.Model(freq_dim, shared.model_config)
 
     x = torch.randn(batch_size, time_steps, freq_dim)
-    x = autograd.Variable(x)
 
     x_enc = model.encode(x)
     t_dim = model.conv_out_size(time_steps, 0)

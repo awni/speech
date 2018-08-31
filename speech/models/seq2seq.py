@@ -229,8 +229,8 @@ class Seq2Seq(model.Model):
     def collate(self, inputs, labels):
         inputs = model.zero_pad_concat(inputs)
         labels = end_pad_concat(labels)
-        inputs = autograd.Variable(torch.from_numpy(inputs))
-        labels = autograd.Variable(torch.from_numpy(labels))
+        inputs = torch.from_numpy(inputs)
+        labels = torch.from_numpy(labels)
         if self.volatile:
             inputs.volatile = True
             labels.volatile = True
