@@ -1,27 +1,37 @@
 {
-    "seed" : 2017,
+    "seed" : 2019,
     "save_path" : "/deep/group/awni/speech_models/test",
 
     "data" : {
         "train_set" : "/deep/group/speech/datasets/LibriSpeech/train-toy.json",
-        "dev_set" : "/deep/group/speech/datasets/LibriSpeech/dev-toy.json"
+        "dev_set" : "/deep/group/speech/datasets/LibriSpeech/dev-toy.json",
+        "start_and_end" : false
     },
 
     "optimizer" : {
         "batch_size" : 8,
-        "epochs" : 1000,
+        "epochs" : 200,
         "learning_rate" : 1e-3,
         "momentum" : 0.0
     },
 
     "model" : {
+        "class" : "Transducer",
+        "dropout" : 0.5,
         "encoder" : {
+            "conv" : [
+                [8, 5, 32, 2],
+                [8, 5, 32, 1]
+            ],
             "rnn" : {
                 "dim" : 256,
-                "layers" : 1
+                "bidirectional" : true,
+                "layers" : 4
             }
         },
         "decoder" : {
+            "embedding_dim" : 256,
+            "layers" : 1
         }
     }
 }

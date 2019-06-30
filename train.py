@@ -24,6 +24,7 @@ def run_epoch(model, optimizer, train_ldr, it, avg_loss):
     end_t = time.time()
     tq = tqdm.tqdm(train_ldr)
     for batch in tq:
+        batch = list(batch)
         start_t = time.time()
         optimizer.zero_grad()
         loss = model.loss(batch)
@@ -54,6 +55,7 @@ def eval_dev(model, ldr, preproc):
     model.set_eval()
 
     for batch in tqdm.tqdm(ldr):
+        batch = list(batch)
         preds = model.infer(batch)
         loss = model.loss(batch)
         losses.append(loss.data[0])
