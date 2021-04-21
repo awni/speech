@@ -5,7 +5,7 @@ protobuf==3.4.0
 py==1.10.0
 pycparser==2.18
 pytest==3.2.3
-PyYAML==3.12
+PyYAML==5.4
 scipy==0.18.1
 six==1.11.0
 SoundFile==0.10.2
