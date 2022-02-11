@@ -1,7 +1,7 @@
 cffi==1.11.2
 editdistance==0.3.1
 numpy==1.13.3
-protobuf==3.4.0
+protobuf==3.15.0
 py==1.10.0
 pycparser==2.18
 pytest==3.2.3
