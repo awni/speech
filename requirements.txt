@@ -1,6 +1,6 @@
 cffi==1.11.2
 editdistance==0.3.1
-numpy==1.13.3
+numpy==1.22.0
 protobuf==3.4.0
 py==1.10.0
 pycparser==2.18
